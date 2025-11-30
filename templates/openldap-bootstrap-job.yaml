@@ -1,0 +1,84 @@
+{{- if and .Values.openldap.enabled .Values.openldap.bootstrap.enabled }}
+{{- $configMapName := .Values.openldap.bootstrap.customLdifConfigMap | default (printf "%s-bootstrap" (include "ldap-stack.openldap.fullname" .)) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "ldap-stack.openldap.fullname" . }}-bootstrap
+  labels:
+    {{- include "ldap-stack.openldap.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        {{- include "ldap-stack.openldap.selectorLabels" . | nindent 8 }}
+        job: bootstrap
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-ldap
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Waiting for OpenLDAP to be ready..."
+              until nc -z {{ include "ldap-stack.openldap.fullname" . }} {{ .Values.openldap.service.ldapPort }}; do
+                echo "OpenLDAP not ready, waiting..."
+                sleep 5
+              done
+              echo "OpenLDAP is ready!"
+              sleep 5
+      containers:
+        - name: bootstrap
+          image: "{{ .Values.openldap.image.repository }}:{{ .Values.openldap.image.tag }}"
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Starting LDAP bootstrap..."
+
+              LDAP_HOST="{{ include "ldap-stack.openldap.fullname" . }}"
+              LDAP_PORT="{{ .Values.openldap.service.ldapPort }}"
+              BASE_DN="{{ include "ldap-stack.openldap.baseDN" . }}"
+              ADMIN_DN="{{ include "ldap-stack.openldap.adminDN" . }}"
+
+              # Process all LDIF files in order
+              for ldif_file in /bootstrap/*.ldif; do
+                if [ -f "$ldif_file" ]; then
+                  echo "Processing: $ldif_file"
+                  # Use ldapadd with -c to continue on errors (e.g., if entry already exists)
+                  ldapadd -x -H "ldap://${LDAP_HOST}:${LDAP_PORT}" \
+                    -D "${ADMIN_DN}" \
+                    -w "${LDAP_ADMIN_PASSWORD}" \
+                    -f "$ldif_file" \
+                    -c || echo "Warning: Some entries may already exist (this is OK)"
+                fi
+              done
+
+              echo "Bootstrap completed successfully!"
+          env:
+            - name: LDAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.openldap.secretName" . }}
+                  key: admin-password
+          volumeMounts:
+            - name: bootstrap-ldif
+              mountPath: /bootstrap
+              readOnly: true
+      volumes:
+        - name: bootstrap-ldif
+          configMap:
+            name: {{ $configMapName }}
+{{- end }}

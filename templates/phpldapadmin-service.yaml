@@ -1,0 +1,33 @@
+{{- if .Values.phpldapadmin.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ldap-stack.phpldapadmin.fullname" . }}
+  labels:
+    {{- include "ldap-stack.phpldapadmin.labels" . | nindent 4 }}
+  {{- with .Values.phpldapadmin.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.phpldapadmin.service.type }}
+  ports:
+    - port: {{ .Values.phpldapadmin.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.phpldapadmin.service.type "NodePort") .Values.phpldapadmin.service.nodePort }}
+      nodePort: {{ .Values.phpldapadmin.service.nodePort }}
+      {{- end }}
+  {{- if eq .Values.phpldapadmin.service.type "LoadBalancer" }}
+  {{- with .Values.phpldapadmin.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with .Values.phpldapadmin.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  selector:
+    {{- include "ldap-stack.phpldapadmin.selectorLabels" . | nindent 4 }}
+{{- end }}

@@ -1,0 +1,30 @@
+{{- if and .Values.openldap.enabled .Values.openldap.persistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ldap-stack.openldap.fullname" . }}-data
+  labels:
+    {{- include "ldap-stack.openldap.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.openldap.persistence.data.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.openldap.persistence.data.size }}
+  {{- include "ldap-stack.storageClass" . | nindent 2 }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "ldap-stack.openldap.fullname" . }}-config
+  labels:
+    {{- include "ldap-stack.openldap.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.openldap.persistence.config.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.openldap.persistence.config.size }}
+  {{- include "ldap-stack.storageClass" . | nindent 2 }}
+{{- end }}

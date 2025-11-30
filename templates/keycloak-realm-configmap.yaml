@@ -1,0 +1,108 @@
+{{- if and .Values.keycloak.enabled .Values.keycloak.realm.import.enabled }}
+{{- if not .Values.keycloak.realm.import.configMapName }}
+{{- /* Priority: 1) realmJson inline, 2) ldapFederation auto-generated */}}
+{{- if or .Values.keycloak.realm.import.realmJson .Values.ldapFederation.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ldap-stack.keycloak.fullname" . }}-realm
+  labels:
+    {{- include "ldap-stack.keycloak.labels" . | nindent 4 }}
+data:
+  {{- if .Values.keycloak.realm.import.realmJson }}
+  {{- /* Use inline realmJson provided by user */}}
+  realm.json: |
+{{ .Values.keycloak.realm.import.realmJson | indent 4 }}
+  {{- else if .Values.ldapFederation.enabled }}
+  {{- /* Auto-generate LDAP federation config */}}
+  realm-ldap.json: |
+    {
+      "realm": "{{ .Values.ldapFederation.realmName }}",
+      "enabled": true,
+      "components": {
+        "org.keycloak.storage.UserStorageProvider": [
+          {
+            "name": "{{ .Values.ldapFederation.displayName }}",
+            "providerId": "ldap",
+            "subComponents": {
+              "org.keycloak.storage.ldap.mappers.LDAPStorageMapper": [
+                {
+                  "name": "username",
+                  "providerId": "user-attribute-ldap-mapper",
+                  "subComponents": {},
+                  "config": {
+                    "ldap.attribute": ["uid"],
+                    "is.mandatory.in.ldap": ["true"],
+                    "read.only": ["false"],
+                    "always.read.value.from.ldap": ["false"],
+                    "user.model.attribute": ["username"]
+                  }
+                },
+                {
+                  "name": "email",
+                  "providerId": "user-attribute-ldap-mapper",
+                  "subComponents": {},
+                  "config": {
+                    "ldap.attribute": ["mail"],
+                    "is.mandatory.in.ldap": ["false"],
+                    "read.only": ["false"],
+                    "always.read.value.from.ldap": ["false"],
+                    "user.model.attribute": ["email"]
+                  }
+                },
+                {
+                  "name": "first name",
+                  "providerId": "user-attribute-ldap-mapper",
+                  "subComponents": {},
+                  "config": {
+                    "ldap.attribute": ["givenName"],
+                    "is.mandatory.in.ldap": ["true"],
+                    "read.only": ["false"],
+                    "always.read.value.from.ldap": ["false"],
+                    "user.model.attribute": ["firstName"]
+                  }
+                },
+                {
+                  "name": "last name",
+                  "providerId": "user-attribute-ldap-mapper",
+                  "subComponents": {},
+                  "config": {
+                    "ldap.attribute": ["sn"],
+                    "is.mandatory.in.ldap": ["true"],
+                    "read.only": ["false"],
+                    "always.read.value.from.ldap": ["false"],
+                    "user.model.attribute": ["lastName"]
+                  }
+                }
+              ]
+            },
+            "config": {
+              "enabled": ["true"],
+              "vendor": ["other"],
+              "connectionUrl": ["{{ include "ldap-stack.openldap.url" . }}"],
+              "bindDn": ["{{ include "ldap-stack.openldap.adminDN" . }}"],
+              "bindCredential": ["{{ .Values.openldap.config.adminPassword }}"],
+              "usersDn": ["ou=users,{{ include "ldap-stack.openldap.baseDN" . }}"],
+              "usernameLDAPAttribute": ["uid"],
+              "rdnLDAPAttribute": ["uid"],
+              "uuidLDAPAttribute": ["entryUUID"],
+              "userObjectClasses": ["inetOrgPerson, posixAccount"],
+              "editMode": ["{{ .Values.ldapFederation.editMode }}"],
+              "syncRegistrations": ["false"],
+              "trustEmail": ["true"],
+              "fullSyncPeriod": ["{{ .Values.ldapFederation.syncPeriod }}"],
+              "changedSyncPeriod": ["{{ .Values.ldapFederation.changedSyncPeriod }}"],
+              "cachePolicy": ["DEFAULT"],
+              "batchSizeForSync": ["1000"],
+              "searchScope": ["2"],
+              "importEnabled": ["true"],
+              "pagination": ["true"]
+            }
+          }
+        ]
+      }
+    }
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

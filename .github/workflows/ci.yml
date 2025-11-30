@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_call:
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: Lint chart
+        run: helm lint .
+
+      - name: Validate JSON schema
+        run: |
+          if [ -f values.schema.json ]; then
+            python3 -m json.tool values.schema.json > /dev/null
+            echo "values.schema.json is valid"
+          fi
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - name: default
+            args: "--set openldap.config.organisation=Test --set openldap.config.domain=test.com --set openldap.config.adminPassword=test --set keycloak.admin.username=admin --set keycloak.admin.password=test"
+          - name: with-bootstrap
+            args: "--set openldap.config.organisation=Test --set openldap.config.domain=test.com --set openldap.config.adminPassword=test --set keycloak.admin.username=admin --set keycloak.admin.password=test --set openldap.bootstrap.enabled=true"
+          - name: with-ldap-federation
+            args: "--set openldap.config.organisation=Test --set openldap.config.domain=test.com --set openldap.config.adminPassword=test --set keycloak.admin.username=admin --set keycloak.admin.password=test --set keycloak.realm.import.enabled=true --set ldapFederation.enabled=true"
+          - name: with-production-features
+            args: "--set openldap.config.organisation=Test --set openldap.config.domain=test.com --set openldap.config.adminPassword=test --set keycloak.admin.username=admin --set keycloak.admin.password=test --set networkPolicy.enabled=true --set podDisruptionBudget.enabled=true"
+          - name: nodeport-services
+            args: "--set openldap.config.organisation=Test --set openldap.config.domain=test.com --set openldap.config.adminPassword=test --set keycloak.admin.username=admin --set keycloak.admin.password=test --set keycloak.service.type=NodePort --set phpldapadmin.service.type=NodePort"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: Test template - ${{ matrix.config.name }}
+        run: |
+          helm template test . ${{ matrix.config.args }} > output.yaml
+
+          # Validate required resources
+          grep -q "kind: Deployment" output.yaml
+          grep -q "kind: Service" output.yaml
+          grep -q "kind: Secret" output.yaml
+
+          echo "${{ matrix.config.name }} passed"
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: v3.16.0
+
+      - name: Package chart
+        run: |
+          helm package .
+          ls -la *.tgz
+          echo "Package successful"

@@ -1,0 +1,40 @@
+{{- if .Values.openldap.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ldap-stack.openldap.fullname" . }}
+  labels:
+    {{- include "ldap-stack.openldap.labels" . | nindent 4 }}
+  {{- with .Values.openldap.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.openldap.service.type }}
+  ports:
+    - port: {{ .Values.openldap.service.ldapPort }}
+      targetPort: ldap
+      protocol: TCP
+      name: ldap
+      {{- if and (eq .Values.openldap.service.type "NodePort") .Values.openldap.service.ldapNodePort }}
+      nodePort: {{ .Values.openldap.service.ldapNodePort }}
+      {{- end }}
+    - port: {{ .Values.openldap.service.ldapsPort }}
+      targetPort: ldaps
+      protocol: TCP
+      name: ldaps
+      {{- if and (eq .Values.openldap.service.type "NodePort") .Values.openldap.service.ldapsNodePort }}
+      nodePort: {{ .Values.openldap.service.ldapsNodePort }}
+      {{- end }}
+  {{- if eq .Values.openldap.service.type "LoadBalancer" }}
+  {{- with .Values.openldap.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with .Values.openldap.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  selector:
+    {{- include "ldap-stack.openldap.selectorLabels" . | nindent 4 }}
+{{- end }}

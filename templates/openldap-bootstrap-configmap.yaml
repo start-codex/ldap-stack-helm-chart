@@ -1,0 +1,33 @@
+{{- if and .Values.openldap.enabled .Values.openldap.bootstrap.enabled }}
+{{- if or .Values.openldap.bootstrap.createDefaultOUs .Values.openldap.bootstrap.ldifContent }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ldap-stack.openldap.fullname" . }}-bootstrap
+  labels:
+    {{- include "ldap-stack.openldap.labels" . | nindent 4 }}
+data:
+  {{- if .Values.openldap.bootstrap.createDefaultOUs }}
+  01-default-ous.ldif: |
+    # Default Organizational Units
+    dn: ou=users,{{ include "ldap-stack.openldap.baseDN" . }}
+    objectClass: organizationalUnit
+    ou: users
+    description: Container for user accounts
+
+    dn: ou=groups,{{ include "ldap-stack.openldap.baseDN" . }}
+    objectClass: organizationalUnit
+    ou: groups
+    description: Container for groups
+
+    dn: ou=services,{{ include "ldap-stack.openldap.baseDN" . }}
+    objectClass: organizationalUnit
+    ou: services
+    description: Container for service accounts
+  {{- end }}
+  {{- if .Values.openldap.bootstrap.ldifContent }}
+  02-custom.ldif: |
+{{ .Values.openldap.bootstrap.ldifContent | indent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

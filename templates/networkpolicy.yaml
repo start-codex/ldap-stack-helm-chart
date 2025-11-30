@@ -1,0 +1,191 @@
+{{- if .Values.networkPolicy.enabled }}
+---
+# OpenLDAP NetworkPolicy
+{{- if .Values.openldap.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ldap-stack.openldap.fullname" . }}
+  labels:
+    {{- include "ldap-stack.openldap.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ldap-stack.openldap.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from Keycloak
+    {{- if .Values.keycloak.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ldap-stack.keycloak.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapPort }}
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapsPort }}
+    {{- end }}
+    # Allow from phpLDAPadmin
+    {{- if .Values.phpldapadmin.enabled }}
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "ldap-stack.phpldapadmin.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapPort }}
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapsPort }}
+    {{- end }}
+    # Allow from additional namespaces (for apps that need LDAP)
+    {{- with .Values.networkPolicy.openldap.allowFromNamespaces }}
+    {{- range . }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+      ports:
+        - protocol: TCP
+          port: {{ $.Values.openldap.service.ldapPort }}
+        - protocol: TCP
+          port: {{ $.Values.openldap.service.ldapsPort }}
+    {{- end }}
+    {{- end }}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+{{- end }}
+---
+# Keycloak NetworkPolicy
+{{- if .Values.keycloak.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ldap-stack.keycloak.fullname" . }}
+  labels:
+    {{- include "ldap-stack.keycloak.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ldap-stack.keycloak.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.keycloak.ingressNamespace | default "ingress-nginx" }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from additional namespaces (for apps using Keycloak SSO)
+    {{- with .Values.networkPolicy.keycloak.allowFromNamespaces }}
+    {{- range . }}
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+      ports:
+        - protocol: TCP
+          port: 8080
+    {{- end }}
+    {{- end }}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow to OpenLDAP
+    {{- if .Values.openldap.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "ldap-stack.openldap.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapPort }}
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapsPort }}
+    {{- end }}
+    # Allow to external database (production)
+    {{- if not .Values.keycloak.devMode }}
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: {{ .Values.keycloak.production.database.port }}
+    {{- end }}
+{{- end }}
+---
+# phpLDAPadmin NetworkPolicy
+{{- if .Values.phpldapadmin.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ldap-stack.phpldapadmin.fullname" . }}
+  labels:
+    {{- include "ldap-stack.phpldapadmin.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "ldap-stack.phpldapadmin.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ .Values.networkPolicy.phpldapadmin.ingressNamespace | default "ingress-nginx" }}
+      ports:
+        - protocol: TCP
+          port: 80
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow to OpenLDAP
+    {{- if .Values.openldap.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "ldap-stack.openldap.selectorLabels" . | nindent 14 }}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapPort }}
+        - protocol: TCP
+          port: {{ .Values.openldap.service.ldapsPort }}
+    {{- end }}
+{{- end }}
+{{- end }}

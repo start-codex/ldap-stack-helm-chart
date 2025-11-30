@@ -1,0 +1,149 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ldap-stack.keycloak.fullname" . }}
+  labels:
+    {{- include "ldap-stack.keycloak.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ldap-stack.keycloak.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ldap-stack.keycloak.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: keycloak
+          image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
+          imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
+          {{- $realmImportEnabled := and .Values.keycloak.realm.import.enabled (or .Values.keycloak.realm.import.configMapName .Values.keycloak.realm.import.realmJson .Values.ldapFederation.enabled) }}
+          {{- if .Values.keycloak.devMode }}
+          args:
+            - start-dev
+            {{- if $realmImportEnabled }}
+            - --import-realm
+            {{- end }}
+          {{- else }}
+          args:
+            - start
+            - --optimized
+            {{- if $realmImportEnabled }}
+            - --import-realm
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
+          env:
+            - name: KEYCLOAK_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.keycloak.secretName" . }}
+                  key: admin-username
+            - name: KEYCLOAK_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.keycloak.secretName" . }}
+                  key: admin-password
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_METRICS_ENABLED
+              value: "true"
+            {{- if not .Values.keycloak.devMode }}
+            # Production settings
+            - name: KC_HOSTNAME
+              value: {{ required "keycloak.production.hostname is required in production mode" .Values.keycloak.production.hostname | quote }}
+            - name: KC_PROXY
+              value: "edge"
+            - name: KC_DB
+              value: {{ .Values.keycloak.production.database.vendor | quote }}
+            - name: KC_DB_URL_HOST
+              value: {{ .Values.keycloak.production.database.host | quote }}
+            - name: KC_DB_URL_PORT
+              value: {{ .Values.keycloak.production.database.port | quote }}
+            - name: KC_DB_URL_DATABASE
+              value: {{ .Values.keycloak.production.database.database | quote }}
+            - name: KC_DB_USERNAME
+              value: {{ .Values.keycloak.production.database.username | quote }}
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.keycloak.secretName" . }}
+                  key: db-password
+            {{- end }}
+            # LDAP connection info (for realm import and reference)
+            - name: LDAP_URL
+              value: {{ include "ldap-stack.openldap.url" . | quote }}
+            - name: LDAP_BASE_DN
+              value: {{ include "ldap-stack.openldap.baseDN" . | quote }}
+            - name: LDAP_ADMIN_DN
+              value: {{ include "ldap-stack.openldap.adminDN" . | quote }}
+            {{- if .Values.openldap.enabled }}
+            - name: LDAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.openldap.secretName" . }}
+                  key: admin-password
+            {{- end }}
+            {{- with .Values.keycloak.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: management
+            initialDelaySeconds: 120
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            {{- toYaml .Values.keycloak.resources | nindent 12 }}
+          {{- $realmImport := and .Values.keycloak.realm.import.enabled (or .Values.keycloak.realm.import.configMapName .Values.keycloak.realm.import.realmJson .Values.ldapFederation.enabled) }}
+          {{- if $realmImport }}
+          volumeMounts:
+            - name: realm-config
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+          {{- end }}
+      {{- if $realmImport }}
+      volumes:
+        - name: realm-config
+          configMap:
+            {{- if .Values.keycloak.realm.import.configMapName }}
+            name: {{ .Values.keycloak.realm.import.configMapName }}
+            {{- else }}
+            name: {{ include "ldap-stack.keycloak.fullname" . }}-realm
+            {{- end }}
+      {{- end }}
+      {{- with .Values.keycloak.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.keycloak.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

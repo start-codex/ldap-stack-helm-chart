@@ -1,0 +1,39 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ldap-stack.keycloak.fullname" . }}
+  labels:
+    {{- include "ldap-stack.keycloak.labels" . | nindent 4 }}
+  {{- with .Values.keycloak.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.keycloak.service.type }}
+  ports:
+    - port: {{ .Values.keycloak.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+      {{- if and (eq .Values.keycloak.service.type "NodePort") .Values.keycloak.service.nodePort }}
+      nodePort: {{ .Values.keycloak.service.nodePort }}
+      {{- end }}
+    {{- if .Values.metrics.serviceMonitor.enabled }}
+    - port: 9000
+      targetPort: management
+      protocol: TCP
+      name: management
+    {{- end }}
+  {{- if eq .Values.keycloak.service.type "LoadBalancer" }}
+  {{- with .Values.keycloak.service.loadBalancerIP }}
+  loadBalancerIP: {{ . }}
+  {{- end }}
+  {{- with .Values.keycloak.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+  selector:
+    {{- include "ldap-stack.keycloak.selectorLabels" . | nindent 4 }}
+{{- end }}

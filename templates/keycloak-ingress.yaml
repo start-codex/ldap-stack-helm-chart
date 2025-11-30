@@ -1,0 +1,41 @@
+{{- if and .Values.keycloak.enabled .Values.keycloak.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "ldap-stack.keycloak.fullname" . }}
+  labels:
+    {{- include "ldap-stack.keycloak.labels" . | nindent 4 }}
+  {{- with .Values.keycloak.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.keycloak.ingress.className }}
+  ingressClassName: {{ .Values.keycloak.ingress.className }}
+  {{- end }}
+  {{- if .Values.keycloak.ingress.tls }}
+  tls:
+    {{- range .Values.keycloak.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.keycloak.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "ldap-stack.keycloak.fullname" $ }}
+                port:
+                  name: http
+          {{- end }}
+    {{- end }}
+{{- end }}

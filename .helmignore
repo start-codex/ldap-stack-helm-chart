@@ -1,0 +1,35 @@
+# Ignore all .tgz files (chart packages)
+*.tgz
+
+# Ignore git-related files
+.git/
+.gitignore
+
+# Ignore CI/CD files
+.github/
+
+# Ignore cache directories
+.cr-release-packages/
+public/
+
+# Ignore temporary files
+*.tmp
+*.temp
+.DS_Store
+
+# Ignore backup files
+*.bak
+*.backup
+
+# Ignore IDE files
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# Ignore log files
+*.log
+
+# Ignore example files
+values-example.yaml

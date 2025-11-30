@@ -1,0 +1,152 @@
+{{- if .Values.openldap.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ldap-stack.openldap.fullname" . }}
+  labels:
+    {{- include "ldap-stack.openldap.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ldap-stack.openldap.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "ldap-stack.openldap.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: openldap
+          image: "{{ .Values.openldap.image.repository }}:{{ .Values.openldap.image.tag }}"
+          imagePullPolicy: {{ .Values.openldap.image.pullPolicy }}
+          ports:
+            - name: ldap
+              containerPort: 389
+              protocol: TCP
+            - name: ldaps
+              containerPort: 636
+              protocol: TCP
+          env:
+            - name: LDAP_ORGANISATION
+              value: {{ required "openldap.config.organisation is required" .Values.openldap.config.organisation | quote }}
+            - name: LDAP_DOMAIN
+              value: {{ required "openldap.config.domain is required" .Values.openldap.config.domain | quote }}
+            - name: LDAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.openldap.secretName" . }}
+                  key: admin-password
+            - name: LDAP_CONFIG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.openldap.secretName" . }}
+                  key: config-password
+            - name: LDAP_TLS
+              value: {{ .Values.openldap.tls.enabled | quote }}
+            - name: LDAP_TLS_ENFORCE
+              value: {{ .Values.openldap.tls.enforce | quote }}
+            {{- if .Values.openldap.tls.enabled }}
+            - name: LDAP_TLS_CRT_FILENAME
+              value: {{ .Values.openldap.tls.certFilename | quote }}
+            - name: LDAP_TLS_KEY_FILENAME
+              value: {{ .Values.openldap.tls.keyFilename | quote }}
+            - name: LDAP_TLS_CA_CRT_FILENAME
+              value: {{ .Values.openldap.tls.caFilename | quote }}
+            {{- end }}
+            {{- if .Values.openldap.readonlyUser.enabled }}
+            - name: LDAP_READONLY_USER
+              value: "true"
+            - name: LDAP_READONLY_USER_USERNAME
+              value: {{ .Values.openldap.readonlyUser.username | quote }}
+            - name: LDAP_READONLY_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.openldap.secretName" . }}
+                  key: readonly-password
+            {{- end }}
+            {{- if .Values.openldap.rfc2307bisSchema }}
+            - name: LDAP_RFC2307BIS_SCHEMA
+              value: "true"
+            {{- end }}
+            {{- if .Values.openldap.replication.enabled }}
+            - name: LDAP_REPLICATION
+              value: "true"
+            - name: LDAP_REPLICATION_HOSTS
+              value: {{ .Values.openldap.replication.hosts | join " " | quote }}
+            {{- end }}
+            # Set FQDN for Kubernetes
+            - name: FQDN
+              value: {{ include "ldap-stack.openldap.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+            {{- with .Values.openldap.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.openldap.livenessProbe.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: ldap
+            initialDelaySeconds: {{ .Values.openldap.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.openldap.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.openldap.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.openldap.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.openldap.readinessProbe.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: ldap
+            initialDelaySeconds: {{ .Values.openldap.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.openldap.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.openldap.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.openldap.readinessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.openldap.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.openldap.persistence.enabled }}
+            - name: data
+              mountPath: /var/lib/ldap
+            - name: config
+              mountPath: /etc/ldap/slapd.d
+            {{- end }}
+            {{- if and .Values.openldap.tls.enabled .Values.openldap.tls.existingSecret }}
+            - name: tls-certs
+              mountPath: /container/service/slapd/assets/certs
+              readOnly: true
+            {{- end }}
+      volumes:
+        {{- if .Values.openldap.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "ldap-stack.openldap.fullname" . }}-data
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ include "ldap-stack.openldap.fullname" . }}-config
+        {{- else }}
+        - name: data
+          emptyDir: {}
+        - name: config
+          emptyDir: {}
+        {{- end }}
+        {{- if and .Values.openldap.tls.enabled .Values.openldap.tls.existingSecret }}
+        - name: tls-certs
+          secret:
+            secretName: {{ .Values.openldap.tls.existingSecret }}
+        {{- end }}
+      {{- with .Values.openldap.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.openldap.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.openldap.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

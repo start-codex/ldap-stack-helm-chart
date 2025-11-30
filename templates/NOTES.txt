@@ -1,0 +1,98 @@
+
+=============================================================================
+  LDAP Stack has been deployed!
+=============================================================================
+
+{{- if .Values.openldap.enabled }}
+
+OpenLDAP:
+---------
+  Service: {{ include "ldap-stack.openldap.fullname" . }}
+  LDAP Port: {{ .Values.openldap.service.ldapPort }}
+  LDAPS Port: {{ .Values.openldap.service.ldapsPort }}
+
+  Base DN: {{ include "ldap-stack.openldap.baseDN" . }}
+  Admin DN: {{ include "ldap-stack.openldap.adminDN" . }}
+
+  Internal URL: {{ include "ldap-stack.openldap.url" . }}
+
+  To connect from within the cluster:
+    ldapsearch -x -H ldap://{{ include "ldap-stack.openldap.fullname" . }}:{{ .Values.openldap.service.ldapPort }} \
+      -b "{{ include "ldap-stack.openldap.baseDN" . }}" \
+      -D "{{ include "ldap-stack.openldap.adminDN" . }}" \
+      -w <admin-password>
+
+  To get the admin password:
+    kubectl get secret {{ include "ldap-stack.openldap.secretName" . }} -o jsonpath="{.data.admin-password}" | base64 -d
+
+{{- end }}
+
+{{- if .Values.phpldapadmin.enabled }}
+
+phpLDAPadmin:
+-------------
+  Service: {{ include "ldap-stack.phpldapadmin.fullname" . }}
+  Port: {{ .Values.phpldapadmin.service.port }}
+
+  {{- if .Values.phpldapadmin.ingress.enabled }}
+  URL: http://{{ (index .Values.phpldapadmin.ingress.hosts 0).host }}
+  {{- else }}
+
+  To access phpLDAPadmin:
+    kubectl port-forward svc/{{ include "ldap-stack.phpldapadmin.fullname" . }} 8080:{{ .Values.phpldapadmin.service.port }}
+
+  Then open: http://localhost:8080
+  {{- end }}
+
+  Login DN: {{ include "ldap-stack.openldap.adminDN" . }}
+
+{{- end }}
+
+{{- if .Values.keycloak.enabled }}
+
+Keycloak:
+---------
+  Service: {{ include "ldap-stack.keycloak.fullname" . }}
+  Port: {{ .Values.keycloak.service.port }}
+  Mode: {{ if .Values.keycloak.devMode }}Development{{ else }}Production{{ end }}
+
+  {{- if .Values.keycloak.ingress.enabled }}
+  URL: http://{{ (index .Values.keycloak.ingress.hosts 0).host }}
+  {{- else }}
+
+  To access Keycloak:
+    kubectl port-forward svc/{{ include "ldap-stack.keycloak.fullname" . }} 8081:{{ .Values.keycloak.service.port }}
+
+  Then open: http://localhost:8081
+  {{- end }}
+
+  To get admin credentials:
+    Username: kubectl get secret {{ include "ldap-stack.keycloak.secretName" . }} -o jsonpath="{.data.admin-username}" | base64 -d
+    Password: kubectl get secret {{ include "ldap-stack.keycloak.secretName" . }} -o jsonpath="{.data.admin-password}" | base64 -d
+
+  LDAP Federation Configuration:
+    Connection URL: {{ include "ldap-stack.openldap.url" . }}
+    Users DN: ou=users,{{ include "ldap-stack.openldap.baseDN" . }}
+    Bind DN: {{ include "ldap-stack.openldap.adminDN" . }}
+
+{{- end }}
+
+=============================================================================
+  Quick Start: Configure LDAP Federation in Keycloak
+=============================================================================
+
+1. Access Keycloak Admin Console
+2. Go to User Federation > Add provider > LDAP
+3. Configure:
+   - Connection URL: {{ include "ldap-stack.openldap.url" . }}
+   - Bind DN: {{ include "ldap-stack.openldap.adminDN" . }}
+   - Bind Credential: <admin-password>
+   - Users DN: ou=users,{{ include "ldap-stack.openldap.baseDN" . }}
+   - Username LDAP attribute: uid
+   - RDN LDAP attribute: uid
+   - UUID LDAP attribute: entryUUID
+   - User object classes: inetOrgPerson, posixAccount
+4. Test connection and save
+5. Click "Sync all users"
+
+=============================================================================

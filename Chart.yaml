@@ -1,0 +1,60 @@
+apiVersion: v2
+name: ldap-stack
+description: OpenLDAP + phpLDAPadmin + Keycloak stack for centralized identity management with SSO support
+type: application
+version: 1.0.0
+appVersion: "2.6.0"
+annotations:
+  artifacthub.io/signKey: |
+    fingerprint: 35D9AD8B98D2FB5AF685CABA019335D0A0561140
+    url: https://start-codex.github.io/ldap-stack-helm-chart/public-key.asc
+  artifacthub.io/category: security
+  artifacthub.io/license: Apache-2.0
+  artifacthub.io/links: |
+    - name: OpenLDAP Official
+      url: https://www.openldap.org/
+    - name: Keycloak Official
+      url: https://www.keycloak.org/
+    - name: Chart Source
+      url: https://github.com/start-codex/ldap-stack-helm-chart
+  artifacthub.io/images: |
+    - name: openldap
+      image: startcodex/openldap:2.0.0
+    - name: phpldapadmin
+      image: osixia/phpldapadmin:latest
+    - name: keycloak
+      image: quay.io/keycloak/keycloak:latest
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/changes: |
+    - kind: added
+      description: Initial release with OpenLDAP, phpLDAPadmin, and Keycloak
+    - kind: added
+      description: LDAP Federation auto-configuration for Keycloak
+    - kind: added
+      description: Bootstrap support for automatic OU creation
+    - kind: added
+      description: NetworkPolicy, PodDisruptionBudget, and ServiceMonitor support
+    - kind: added
+      description: Multiple service types (ClusterIP, NodePort, LoadBalancer)
+keywords:
+  - ldap
+  - openldap
+  - keycloak
+  - identity
+  - authentication
+  - sso
+  - oauth2
+  - oidc
+  - saml
+  - directory
+  - iam
+home: https://github.com/start-codex/ldap-stack-helm-chart
+icon: https://www.openldap.org/images/openldap-logo-96x96.png
+sources:
+  - https://github.com/start-codex/ldap-stack-helm-chart
+  - https://github.com/start-codex/openldap
+maintainers:
+  - name: StartCodex
+    url: https://github.com/start-codex
+    email: contact@startcodex.com

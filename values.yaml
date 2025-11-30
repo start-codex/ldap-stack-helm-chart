@@ -1,0 +1,342 @@
+# =============================================================================
+# LDAP Stack Helm Chart - Default Values
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Global Configuration
+# -----------------------------------------------------------------------------
+global:
+  # Namespace to deploy (if not using helm -n)
+  namespace: ""
+  # Image pull secrets if using private registry
+  imagePullSecrets: []
+  # Storage class for PVCs (empty = default)
+  storageClass: ""
+
+# -----------------------------------------------------------------------------
+# OpenLDAP Configuration
+# -----------------------------------------------------------------------------
+openldap:
+  enabled: true
+
+  image:
+    repository: startcodex/openldap
+    tag: "2.0.0"
+    pullPolicy: IfNotPresent
+
+  # LDAP Configuration (REQUIRED - no defaults)
+  config:
+    organisation: ""      # e.g., "My Company"
+    domain: ""            # e.g., "mycompany.com"
+    adminPassword: ""     # Admin password
+    configPassword: ""    # Config password (optional, defaults to adminPassword)
+
+  # TLS Configuration
+  tls:
+    enabled: true
+    enforce: false
+    # Use existing secret for TLS certificates
+    existingSecret: ""
+    # Or specify certificate files
+    certFilename: "ldap.crt"
+    keyFilename: "ldap.key"
+    caFilename: "ca.crt"
+
+  # Optional features
+  readonlyUser:
+    enabled: false
+    username: "readonly"
+    password: ""
+
+  # Use RFC2307bis schema (for nested groups)
+  rfc2307bisSchema: false
+
+  # Replication (multi-master)
+  replication:
+    enabled: false
+    hosts: []
+
+  # Service configuration
+  service:
+    type: ClusterIP  # ClusterIP, NodePort, LoadBalancer
+    ldapPort: 389
+    ldapsPort: 636
+    # NodePort settings (only when type: NodePort)
+    ldapNodePort: ""   # e.g., 30389
+    ldapsNodePort: ""  # e.g., 30636
+    # LoadBalancer settings (only when type: LoadBalancer)
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    annotations: {}
+
+  # Persistence
+  persistence:
+    enabled: true
+    size: 1Gi
+    # Separate PVCs for data and config
+    data:
+      size: 1Gi
+      accessMode: ReadWriteOnce
+    config:
+      size: 100Mi
+      accessMode: ReadWriteOnce
+
+  # Resources
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  # Node selector, tolerations, affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # Extra environment variables
+  extraEnv: []
+
+  # Bootstrap configuration (optional - for initial data population)
+  bootstrap:
+    # Enable bootstrap with LDIF files
+    enabled: false
+    # Create default OUs (users, groups)
+    createDefaultOUs: true
+    # ConfigMap containing custom LDIF files (optional)
+    # If not specified and enabled, default OUs will be created
+    customLdifConfigMap: ""
+    # Inline LDIF content (alternative to ConfigMap)
+    # Example:
+    # ldifContent: |
+    #   dn: ou=users,dc=example,dc=com
+    #   objectClass: organizationalUnit
+    #   ou: users
+    ldifContent: ""
+
+  # Liveness and readiness probes
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# -----------------------------------------------------------------------------
+# phpLDAPadmin Configuration
+# -----------------------------------------------------------------------------
+phpldapadmin:
+  enabled: true
+
+  image:
+    repository: osixia/phpldapadmin
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  # Service configuration
+  service:
+    type: ClusterIP  # ClusterIP, NodePort, LoadBalancer
+    port: 80
+    # NodePort settings (only when type: NodePort)
+    nodePort: ""  # e.g., 30080
+    # LoadBalancer settings (only when type: LoadBalancer)
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    annotations: {}
+
+  # Ingress
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: phpldapadmin.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  # Resources
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  # Node selector, tolerations, affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# -----------------------------------------------------------------------------
+# Keycloak Configuration
+# -----------------------------------------------------------------------------
+keycloak:
+  enabled: true
+
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  # Keycloak admin credentials (REQUIRED)
+  admin:
+    username: ""
+    password: ""
+
+  # Run in development mode (start-dev)
+  devMode: true
+
+  # Production settings (when devMode: false)
+  production:
+    hostname: ""
+    # Database configuration for production
+    database:
+      vendor: postgres
+      host: ""
+      port: 5432
+      database: keycloak
+      username: ""
+      password: ""
+
+  # Service configuration
+  service:
+    type: ClusterIP  # ClusterIP, NodePort, LoadBalancer
+    port: 8080
+    # NodePort settings (only when type: NodePort)
+    nodePort: ""  # e.g., 30808
+    # LoadBalancer settings (only when type: LoadBalancer)
+    loadBalancerIP: ""
+    loadBalancerSourceRanges: []
+    annotations: {}
+
+  # Ingress
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: keycloak.local
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+  # Resources
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+
+  # Node selector, tolerations, affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+  # Extra environment variables
+  extraEnv: []
+
+  # Import realm on startup
+  realm:
+    import:
+      enabled: false
+      # ConfigMap name containing realm JSON (external)
+      configMapName: ""
+      # Or provide realm JSON inline (takes precedence over ldapFederation auto-generated)
+      # Example with Google SAML SSO:
+      # realmJson: |
+      #   {
+      #     "realm": "master",
+      #     "enabled": true,
+      #     "identityProviders": [...],
+      #     "components": {...}
+      #   }
+      realmJson: ""
+
+# -----------------------------------------------------------------------------
+# LDAP Federation in Keycloak (auto-configuration)
+# -----------------------------------------------------------------------------
+ldapFederation:
+  # Auto-configure Keycloak LDAP federation
+  enabled: false
+  # Realm name
+  realmName: "master"
+  # Federation display name
+  displayName: "ldap"
+  # Edit mode: READ_ONLY, WRITABLE, UNSYNCED
+  editMode: "WRITABLE"
+  # Sync settings
+  syncPeriod: -1
+  changedSyncPeriod: -1
+
+# -----------------------------------------------------------------------------
+# Network Policies (Production Security)
+# -----------------------------------------------------------------------------
+networkPolicy:
+  enabled: false
+  # OpenLDAP network policy settings
+  openldap:
+    # Additional namespaces that can access LDAP
+    allowFromNamespaces: []
+    # - sonarqube
+    # - gitea
+  # Keycloak network policy settings
+  keycloak:
+    # Ingress controller namespace
+    ingressNamespace: "ingress-nginx"
+    # Additional namespaces that can access Keycloak
+    allowFromNamespaces: []
+    # - default
+    # - apps
+  # phpLDAPadmin network policy settings
+  phpldapadmin:
+    # Ingress controller namespace
+    ingressNamespace: "ingress-nginx"
+
+# -----------------------------------------------------------------------------
+# Pod Disruption Budget (High Availability)
+# -----------------------------------------------------------------------------
+podDisruptionBudget:
+  enabled: false
+  # Minimum available pods (use this OR maxUnavailable)
+  minAvailable: ""
+  # Maximum unavailable pods
+  maxUnavailable: 1
+
+# -----------------------------------------------------------------------------
+# Metrics and Monitoring (Prometheus Integration)
+# -----------------------------------------------------------------------------
+metrics:
+  # ServiceMonitor for Prometheus Operator
+  serviceMonitor:
+    enabled: false
+    # Namespace for ServiceMonitor (defaults to release namespace)
+    namespace: ""
+    # Labels to add to ServiceMonitor (for Prometheus selector)
+    labels: {}
+    # Scrape interval
+    interval: "30s"
+    # Scrape timeout
+    scrapeTimeout: "10s"
+    # Honor labels from the target
+    honorLabels: false
+  # OpenLDAP exporter sidecar (optional)
+  openldapExporter:
+    enabled: false
+    image:
+      repository: tomcz/openldap_exporter
+      tag: "v2.1"
+    port: 9330
