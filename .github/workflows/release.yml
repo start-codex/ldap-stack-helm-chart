@@ -88,14 +88,19 @@ jobs:
         run: |
           mkdir -p .packages public
 
-          # Download existing charts
+          # Download existing charts (only if valid)
           wget -q https://start-codex.github.io/ldap-stack-helm-chart/index.yaml -O existing-index.yaml 2>/dev/null || true
 
-          if [ -f existing-index.yaml ]; then
+          # Validate existing index is not empty and contains valid YAML
+          if [ -f existing-index.yaml ] && [ -s existing-index.yaml ] && grep -q "apiVersion:" existing-index.yaml; then
+            echo "Found valid existing index.yaml"
             grep -o 'https://start-codex.github.io/ldap-stack-helm-chart/[^"]*\.tgz' existing-index.yaml | while read url; do
               [ -n "$url" ] && wget -q "$url" -O "public/$(basename $url)" || true
             done
             cp existing-index.yaml .packages/
+          else
+            echo "No valid existing index.yaml found, will create new index"
+            rm -f existing-index.yaml
           fi
 
           # Package with signature if GPG available
