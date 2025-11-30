@@ -135,8 +135,7 @@ jobs:
           cp .packages/*.tgz public/
           cp .packages/*.prov public/ 2>/dev/null || true
           cp .packages/index.yaml public/
-          cp README.md artifacthub-repo.yml public/
-          cp public-key.asc public/ 2>/dev/null || true
+          cp README.md artifacthub-repo.yml public-key.asc public/
 
       - name: Generate index.html
         run: |
