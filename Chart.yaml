@@ -2,7 +2,7 @@ apiVersion: v2
 name: ldap-stack
 description: OpenLDAP + phpLDAPadmin + Keycloak stack for centralized identity management with SSO support
 type: application
-version: 1.1.0
+version: 1.1.1
 appVersion: "2.6.0"
 annotations:
   artifacthub.io/signKey: |
@@ -27,14 +27,8 @@ annotations:
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
-    - kind: added
-      description: Support for existingSecret in OpenLDAP credentials
-    - kind: added
-      description: Support for existingSecret in Keycloak admin credentials
-    - kind: added
-      description: Support for existingSecret in Keycloak database credentials
-    - kind: added
-      description: Production values example with LoadBalancer and external secrets
+    - kind: fixed
+      description: Remove --optimized flag from Keycloak production start command
 keywords:
   - ldap
   - openldap
