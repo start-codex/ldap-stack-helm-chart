@@ -1,4 +1,5 @@
 {{- if and .Values.openldap.enabled .Values.openldap.persistence.enabled }}
+{{- $storageClass := .Values.openldap.persistence.storageClass | default .Values.global.storageClass }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -12,7 +13,9 @@ spec:
   resources:
     requests:
       storage: {{ .Values.openldap.persistence.data.size }}
-  {{- include "ldap-stack.storageClass" . | nindent 2 }}
+  {{- if $storageClass }}
+  storageClassName: {{ $storageClass }}
+  {{- end }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -26,5 +29,7 @@ spec:
   resources:
     requests:
       storage: {{ .Values.openldap.persistence.config.size }}
-  {{- include "ldap-stack.storageClass" . | nindent 2 }}
+  {{- if $storageClass }}
+  storageClassName: {{ $storageClass }}
+  {{- end }}
 {{- end }}
