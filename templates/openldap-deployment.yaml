@@ -41,12 +41,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ldap-stack.openldap.secretName" . }}
-                  key: admin-password
+                  key: {{ .Values.openldap.secretKeys.adminPassword | default "admin-password" }}
             - name: LDAP_CONFIG_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ldap-stack.openldap.secretName" . }}
-                  key: config-password
+                  key: {{ .Values.openldap.secretKeys.configPassword | default "config-password" }}
             - name: LDAP_TLS
               value: {{ .Values.openldap.tls.enabled | quote }}
             - name: LDAP_TLS_ENFORCE

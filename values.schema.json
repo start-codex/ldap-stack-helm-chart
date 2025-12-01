@@ -66,11 +66,10 @@
                 },
                 "config": {
                     "type": "object",
-                    "description": "LDAP Configuration (REQUIRED)",
+                    "description": "LDAP Configuration",
                     "required": [
                         "organisation",
-                        "domain",
-                        "adminPassword"
+                        "domain"
                     ],
                     "properties": {
                         "organisation": {
@@ -86,12 +85,29 @@
                         },
                         "adminPassword": {
                             "type": "string",
-                            "description": "Admin password",
-                            "minLength": 1
+                            "description": "Admin password (required if existingSecret is not set)"
                         },
                         "configPassword": {
                             "type": "string",
                             "description": "Config password (optional, defaults to adminPassword)"
+                        }
+                    }
+                },
+                "existingSecret": {
+                    "type": "string",
+                    "description": "Name of existing secret containing OpenLDAP credentials"
+                },
+                "secretKeys": {
+                    "type": "object",
+                    "description": "Keys in the existing secret",
+                    "properties": {
+                        "adminPassword": {
+                            "type": "string",
+                            "default": "admin-password"
+                        },
+                        "configPassword": {
+                            "type": "string",
+                            "default": "config-password"
                         }
                     }
                 },
@@ -442,19 +458,33 @@
                 },
                 "admin": {
                     "type": "object",
-                    "description": "Keycloak admin credentials (REQUIRED)",
-                    "required": [
-                        "username",
-                        "password"
-                    ],
+                    "description": "Keycloak admin credentials (required if existingSecret is not set)",
                     "properties": {
                         "username": {
                             "type": "string",
-                            "minLength": 1
+                            "description": "Admin username"
                         },
                         "password": {
                             "type": "string",
-                            "minLength": 1
+                            "description": "Admin password"
+                        }
+                    }
+                },
+                "existingSecret": {
+                    "type": "string",
+                    "description": "Name of existing secret containing Keycloak admin credentials"
+                },
+                "secretKeys": {
+                    "type": "object",
+                    "description": "Keys in the existing secret",
+                    "properties": {
+                        "adminUsername": {
+                            "type": "string",
+                            "default": "admin-username"
+                        },
+                        "adminPassword": {
+                            "type": "string",
+                            "default": "admin-password"
                         }
                     }
                 },
@@ -502,6 +532,24 @@
                                 },
                                 "password": {
                                     "type": "string"
+                                },
+                                "existingSecret": {
+                                    "type": "string",
+                                    "description": "Name of existing secret containing database credentials"
+                                },
+                                "secretKeys": {
+                                    "type": "object",
+                                    "description": "Keys in the existing secret",
+                                    "properties": {
+                                        "username": {
+                                            "type": "string",
+                                            "default": "username"
+                                        },
+                                        "password": {
+                                            "type": "string",
+                                            "default": "password"
+                                        }
+                                    }
                                 }
                             }
                         }

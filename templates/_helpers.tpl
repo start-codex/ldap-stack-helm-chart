@@ -131,14 +131,22 @@ app.kubernetes.io/component: keycloak
 Secret name for OpenLDAP credentials
 */}}
 {{- define "ldap-stack.openldap.secretName" -}}
+{{- if .Values.openldap.existingSecret -}}
+{{- .Values.openldap.existingSecret }}
+{{- else -}}
 {{- printf "%s-openldap-credentials" (include "ldap-stack.fullname" .) }}
+{{- end -}}
 {{- end }}
 
 {{/*
 Secret name for Keycloak credentials
 */}}
 {{- define "ldap-stack.keycloak.secretName" -}}
+{{- if .Values.keycloak.existingSecret -}}
+{{- .Values.keycloak.existingSecret }}
+{{- else -}}
 {{- printf "%s-keycloak-credentials" (include "ldap-stack.fullname" .) }}
+{{- end -}}
 {{- end }}
 
 {{/*

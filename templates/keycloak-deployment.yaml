@@ -50,12 +50,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ldap-stack.keycloak.secretName" . }}
-                  key: admin-username
+                  key: {{ .Values.keycloak.secretKeys.adminUsername | default "admin-username" }}
             - name: KEYCLOAK_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "ldap-stack.keycloak.secretName" . }}
-                  key: admin-password
+                  key: {{ .Values.keycloak.secretKeys.adminPassword | default "admin-password" }}
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_METRICS_ENABLED
@@ -74,6 +74,20 @@ spec:
               value: {{ .Values.keycloak.production.database.port | quote }}
             - name: KC_DB_URL_DATABASE
               value: {{ .Values.keycloak.production.database.database | quote }}
+            {{- if .Values.keycloak.production.database.existingSecret }}
+            # Database credentials from existing secret
+            - name: KC_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.production.database.existingSecret }}
+                  key: {{ .Values.keycloak.production.database.secretKeys.username | default "username" }}
+            - name: KC_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.keycloak.production.database.existingSecret }}
+                  key: {{ .Values.keycloak.production.database.secretKeys.password | default "password" }}
+            {{- else }}
+            # Database credentials from values
             - name: KC_DB_USERNAME
               value: {{ .Values.keycloak.production.database.username | quote }}
             - name: KC_DB_PASSWORD
@@ -81,6 +95,7 @@ spec:
                 secretKeyRef:
                   name: {{ include "ldap-stack.keycloak.secretName" . }}
                   key: db-password
+            {{- end }}
             {{- end }}
             # LDAP connection info (for realm import and reference)
             - name: LDAP_URL
