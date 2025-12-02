@@ -811,6 +811,232 @@
                     }
                 }
             }
+        },
+        "googleSync": {
+            "type": "object",
+            "description": "LDAP to Google Workspace Sync",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Enable LDAP to Google Workspace synchronization",
+                    "default": false
+                },
+                "image": {
+                    "type": "object",
+                    "properties": {
+                        "repository": {
+                            "type": "string",
+                            "default": "startcodex/ldap-sync-google"
+                        },
+                        "tag": {
+                            "type": "string",
+                            "default": "latest"
+                        },
+                        "pullPolicy": {
+                            "type": "string",
+                            "enum": ["Always", "IfNotPresent", "Never"],
+                            "default": "IfNotPresent"
+                        }
+                    }
+                },
+                "syncInterval": {
+                    "type": "string",
+                    "description": "Sync interval (e.g., 1h, 30m). Set to 0 for single run",
+                    "default": "1h"
+                },
+                "cronJob": {
+                    "type": "object",
+                    "description": "Run as CronJob instead of Deployment",
+                    "properties": {
+                        "enabled": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "schedule": {
+                            "type": "string",
+                            "description": "Cron schedule",
+                            "default": "0 * * * *"
+                        },
+                        "concurrencyPolicy": {
+                            "type": "string",
+                            "enum": ["Allow", "Forbid", "Replace"],
+                            "default": "Forbid"
+                        },
+                        "successfulJobsHistoryLimit": {
+                            "type": "integer",
+                            "default": 3
+                        },
+                        "failedJobsHistoryLimit": {
+                            "type": "integer",
+                            "default": 3
+                        }
+                    }
+                },
+                "google": {
+                    "type": "object",
+                    "description": "Google Workspace configuration",
+                    "properties": {
+                        "domain": {
+                            "type": "string",
+                            "description": "Google Workspace domain"
+                        },
+                        "adminEmail": {
+                            "type": "string",
+                            "description": "Admin email for impersonation"
+                        },
+                        "existingSecret": {
+                            "type": "string",
+                            "description": "Secret containing Google service account credentials"
+                        },
+                        "secretKey": {
+                            "type": "string",
+                            "description": "Key in secret containing credentials JSON",
+                            "default": "credentials.json"
+                        }
+                    }
+                },
+                "ldap": {
+                    "type": "object",
+                    "description": "LDAP connection settings",
+                    "properties": {
+                        "host": {
+                            "type": "string",
+                            "description": "LDAP host (default: uses openldap service)"
+                        },
+                        "port": {
+                            "type": "integer",
+                            "default": 389,
+                            "minimum": 1,
+                            "maximum": 65535
+                        },
+                        "useTLS": {
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "bindDN": {
+                            "type": "string",
+                            "description": "Bind DN for authentication"
+                        },
+                        "bindPassword": {
+                            "type": "string",
+                            "description": "Bind password"
+                        },
+                        "baseDN": {
+                            "type": "string",
+                            "description": "Base DN for user searches"
+                        },
+                        "groupBaseDN": {
+                            "type": "string",
+                            "description": "Base DN for group searches"
+                        },
+                        "userFilter": {
+                            "type": "string",
+                            "default": "(objectClass=inetOrgPerson)"
+                        },
+                        "groupFilter": {
+                            "type": "string",
+                            "default": "(objectClass=posixGroup)"
+                        },
+                        "existingSecret": {
+                            "type": "string",
+                            "description": "Secret containing LDAP credentials for external LDAP"
+                        },
+                        "secretKeys": {
+                            "type": "object",
+                            "properties": {
+                                "host": {
+                                    "type": "string",
+                                    "default": "host"
+                                },
+                                "bindDN": {
+                                    "type": "string",
+                                    "default": "bind-dn"
+                                },
+                                "bindPassword": {
+                                    "type": "string",
+                                    "default": "bind-password"
+                                },
+                                "baseDN": {
+                                    "type": "string",
+                                    "default": "base-dn"
+                                }
+                            }
+                        }
+                    }
+                },
+                "ldapAttributes": {
+                    "type": "object",
+                    "description": "LDAP attribute mappings",
+                    "properties": {
+                        "uid": {"type": "string", "default": "uid"},
+                        "email": {"type": "string", "default": "mail"},
+                        "firstName": {"type": "string", "default": "givenName"},
+                        "lastName": {"type": "string", "default": "sn"},
+                        "phone": {"type": "string", "default": "telephoneNumber"},
+                        "department": {"type": "string", "default": "departmentNumber"},
+                        "title": {"type": "string", "default": "title"},
+                        "orgUnit": {"type": "string", "default": "ou"},
+                        "groupName": {"type": "string", "default": "cn"},
+                        "groupEmail": {"type": "string", "default": "mail"},
+                        "groupDescription": {"type": "string", "default": "description"},
+                        "groupMember": {"type": "string", "default": "memberUid"}
+                    }
+                },
+                "sync": {
+                    "type": "object",
+                    "description": "Sync options",
+                    "properties": {
+                        "dryRun": {
+                            "type": "boolean",
+                            "description": "Simulate changes without applying",
+                            "default": true
+                        },
+                        "users": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"type": "boolean", "default": true},
+                                "create": {"type": "boolean", "default": true},
+                                "update": {"type": "boolean", "default": true},
+                                "suspendMissing": {"type": "boolean", "default": false},
+                                "deleteInsteadOfSuspend": {"type": "boolean", "default": false},
+                                "defaultOrgUnit": {"type": "string", "default": "/"}
+                            }
+                        },
+                        "groups": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"type": "boolean", "default": false},
+                                "create": {"type": "boolean", "default": true},
+                                "update": {"type": "boolean", "default": true},
+                                "deleteMissing": {"type": "boolean", "default": false},
+                                "syncMembers": {"type": "boolean", "default": true},
+                                "emailSuffix": {"type": "string"}
+                            }
+                        },
+                        "orgUnits": {
+                            "type": "object",
+                            "properties": {
+                                "enabled": {"type": "boolean", "default": false},
+                                "create": {"type": "boolean", "default": true}
+                            }
+                        }
+                    }
+                },
+                "resources": {
+                    "$ref": "#/definitions/resources"
+                },
+                "nodeSelector": {
+                    "type": "object",
+                    "additionalProperties": {"type": "string"}
+                },
+                "tolerations": {
+                    "type": "array",
+                    "items": {"$ref": "#/definitions/toleration"}
+                },
+                "affinity": {
+                    "type": "object"
+                }
+            }
         }
     },
     "definitions": {

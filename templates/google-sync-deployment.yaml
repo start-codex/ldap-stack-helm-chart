@@ -1,0 +1,201 @@
+{{- if and .Values.googleSync.enabled (not .Values.googleSync.cronJob.enabled) }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ldap-stack.fullname" . }}-google-sync
+  labels:
+    {{- include "ldap-stack.labels" . | nindent 4 }}
+    app.kubernetes.io/component: google-sync
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "ldap-stack.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: google-sync
+  template:
+    metadata:
+      labels:
+        {{- include "ldap-stack.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: google-sync
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: google-sync
+          image: "{{ .Values.googleSync.image.repository }}:{{ .Values.googleSync.image.tag }}"
+          imagePullPolicy: {{ .Values.googleSync.image.pullPolicy }}
+          env:
+            # Sync interval
+            - name: SYNC_INTERVAL
+              value: {{ .Values.googleSync.syncInterval | quote }}
+            # LDAP Connection
+            {{- if .Values.googleSync.ldap.existingSecret }}
+            # Using external LDAP secret
+            - name: LDAP_HOST
+              {{- if .Values.googleSync.ldap.host }}
+              value: {{ .Values.googleSync.ldap.host | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.googleSync.ldap.existingSecret }}
+                  key: {{ .Values.googleSync.ldap.secretKeys.host | default "host" }}
+                  optional: true
+              {{- end }}
+            - name: LDAP_BIND_DN
+              {{- if .Values.googleSync.ldap.bindDN }}
+              value: {{ .Values.googleSync.ldap.bindDN | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.googleSync.ldap.existingSecret }}
+                  key: {{ .Values.googleSync.ldap.secretKeys.bindDN | default "bind-dn" }}
+              {{- end }}
+            - name: LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.googleSync.ldap.existingSecret }}
+                  key: {{ .Values.googleSync.ldap.secretKeys.bindPassword | default "bind-password" }}
+            - name: LDAP_BASE_DN
+              {{- if .Values.googleSync.ldap.baseDN }}
+              value: {{ .Values.googleSync.ldap.baseDN | quote }}
+              {{- else }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.googleSync.ldap.existingSecret }}
+                  key: {{ .Values.googleSync.ldap.secretKeys.baseDN | default "base-dn" }}
+                  optional: true
+              {{- end }}
+            {{- else }}
+            # Using internal OpenLDAP
+            - name: LDAP_HOST
+              {{- if .Values.googleSync.ldap.host }}
+              value: {{ .Values.googleSync.ldap.host | quote }}
+              {{- else }}
+              value: {{ include "ldap-stack.openldap.fullname" . }}
+              {{- end }}
+            - name: LDAP_BIND_DN
+              {{- if .Values.googleSync.ldap.bindDN }}
+              value: {{ .Values.googleSync.ldap.bindDN | quote }}
+              {{- else }}
+              value: {{ include "ldap-stack.openldap.adminDN" . | quote }}
+              {{- end }}
+            - name: LDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.openldap.secretName" . }}
+                  key: {{ .Values.openldap.secretKeys.adminPassword | default "admin-password" }}
+            - name: LDAP_BASE_DN
+              {{- if .Values.googleSync.ldap.baseDN }}
+              value: {{ .Values.googleSync.ldap.baseDN | quote }}
+              {{- else }}
+              value: {{ include "ldap-stack.openldap.baseDN" . | quote }}
+              {{- end }}
+            {{- end }}
+            - name: LDAP_PORT
+              value: {{ .Values.googleSync.ldap.port | quote }}
+            - name: LDAP_USE_TLS
+              value: {{ .Values.googleSync.ldap.useTLS | quote }}
+            {{- if .Values.googleSync.ldap.groupBaseDN }}
+            - name: LDAP_GROUP_BASE_DN
+              value: {{ .Values.googleSync.ldap.groupBaseDN | quote }}
+            {{- end }}
+            - name: LDAP_USER_FILTER
+              value: {{ .Values.googleSync.ldap.userFilter | quote }}
+            - name: LDAP_GROUP_FILTER
+              value: {{ .Values.googleSync.ldap.groupFilter | quote }}
+            # LDAP Attributes
+            - name: LDAP_ATTR_UID
+              value: {{ .Values.googleSync.ldapAttributes.uid | quote }}
+            - name: LDAP_ATTR_EMAIL
+              value: {{ .Values.googleSync.ldapAttributes.email | quote }}
+            - name: LDAP_ATTR_FIRSTNAME
+              value: {{ .Values.googleSync.ldapAttributes.firstName | quote }}
+            - name: LDAP_ATTR_LASTNAME
+              value: {{ .Values.googleSync.ldapAttributes.lastName | quote }}
+            - name: LDAP_ATTR_PHONE
+              value: {{ .Values.googleSync.ldapAttributes.phone | quote }}
+            - name: LDAP_ATTR_DEPARTMENT
+              value: {{ .Values.googleSync.ldapAttributes.department | quote }}
+            - name: LDAP_ATTR_TITLE
+              value: {{ .Values.googleSync.ldapAttributes.title | quote }}
+            - name: LDAP_ATTR_ORG_UNIT
+              value: {{ .Values.googleSync.ldapAttributes.orgUnit | quote }}
+            - name: LDAP_ATTR_GROUP_NAME
+              value: {{ .Values.googleSync.ldapAttributes.groupName | quote }}
+            - name: LDAP_ATTR_GROUP_EMAIL
+              value: {{ .Values.googleSync.ldapAttributes.groupEmail | quote }}
+            - name: LDAP_ATTR_GROUP_DESC
+              value: {{ .Values.googleSync.ldapAttributes.groupDescription | quote }}
+            - name: LDAP_ATTR_GROUP_MEMBER
+              value: {{ .Values.googleSync.ldapAttributes.groupMember | quote }}
+            # Google Configuration
+            - name: GOOGLE_CREDENTIALS_FILE
+              value: "/secrets/google/credentials.json"
+            - name: GOOGLE_ADMIN_EMAIL
+              value: {{ required "googleSync.google.adminEmail is required" .Values.googleSync.google.adminEmail | quote }}
+            - name: GOOGLE_DOMAIN
+              value: {{ required "googleSync.google.domain is required" .Values.googleSync.google.domain | quote }}
+            # Sync Options
+            - name: SYNC_DRY_RUN
+              value: {{ .Values.googleSync.sync.dryRun | quote }}
+            # User Sync Options
+            - name: SYNC_USERS
+              value: {{ .Values.googleSync.sync.users.enabled | quote }}
+            - name: SYNC_CREATE_USERS
+              value: {{ .Values.googleSync.sync.users.create | quote }}
+            - name: SYNC_UPDATE_USERS
+              value: {{ .Values.googleSync.sync.users.update | quote }}
+            - name: SYNC_SUSPEND_MISSING_USERS
+              value: {{ .Values.googleSync.sync.users.suspendMissing | quote }}
+            - name: SYNC_DELETE_INSTEAD_OF_SUSPEND
+              value: {{ .Values.googleSync.sync.users.deleteInsteadOfSuspend | quote }}
+            - name: SYNC_DEFAULT_ORG_UNIT
+              value: {{ .Values.googleSync.sync.users.defaultOrgUnit | quote }}
+            # Group Sync Options
+            - name: SYNC_GROUPS
+              value: {{ .Values.googleSync.sync.groups.enabled | quote }}
+            - name: SYNC_CREATE_GROUPS
+              value: {{ .Values.googleSync.sync.groups.create | quote }}
+            - name: SYNC_UPDATE_GROUPS
+              value: {{ .Values.googleSync.sync.groups.update | quote }}
+            - name: SYNC_DELETE_MISSING_GROUPS
+              value: {{ .Values.googleSync.sync.groups.deleteMissing | quote }}
+            - name: SYNC_GROUP_MEMBERS
+              value: {{ .Values.googleSync.sync.groups.syncMembers | quote }}
+            {{- if .Values.googleSync.sync.groups.emailSuffix }}
+            - name: SYNC_GROUP_EMAIL_SUFFIX
+              value: {{ .Values.googleSync.sync.groups.emailSuffix | quote }}
+            {{- end }}
+            # OU Sync Options
+            - name: SYNC_ORG_UNITS
+              value: {{ .Values.googleSync.sync.orgUnits.enabled | quote }}
+            - name: SYNC_CREATE_ORG_UNITS
+              value: {{ .Values.googleSync.sync.orgUnits.create | quote }}
+          volumeMounts:
+            - name: google-credentials
+              mountPath: /secrets/google
+              readOnly: true
+          resources:
+            {{- toYaml .Values.googleSync.resources | nindent 12 }}
+      volumes:
+        - name: google-credentials
+          secret:
+            secretName: {{ required "googleSync.google.existingSecret is required" .Values.googleSync.google.existingSecret }}
+            items:
+              - key: {{ .Values.googleSync.google.secretKey | default "credentials.json" }}
+                path: credentials.json
+      {{- with .Values.googleSync.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.googleSync.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.googleSync.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}
