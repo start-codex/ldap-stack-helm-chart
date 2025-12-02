@@ -360,3 +360,118 @@ metrics:
       repository: tomcz/openldap_exporter
       tag: "v2.1"
     port: 9330
+
+# -----------------------------------------------------------------------------
+# LDAP to Google Workspace Sync
+# -----------------------------------------------------------------------------
+googleSync:
+  # Enable LDAP to Google Workspace synchronization
+  enabled: false
+
+  image:
+    repository: startcodex/ldap-sync-google
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  # Sync interval (e.g., 1h, 30m, 2h30m). Set to "0" for single run (use with CronJob)
+  syncInterval: "1h"
+
+  # Run as CronJob instead of Deployment (recommended for production)
+  cronJob:
+    enabled: false
+    schedule: "0 * * * *"  # Every hour
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+
+  # Google Workspace configuration
+  google:
+    # Google Workspace domain (REQUIRED)
+    domain: ""
+    # Admin email for impersonation (REQUIRED)
+    adminEmail: ""
+    # Existing secret containing Google service account credentials JSON
+    # Secret must contain key: credentials.json
+    existingSecret: ""
+    secretKey: "credentials.json"
+
+  # LDAP connection (auto-configured from openldap if enabled)
+  ldap:
+    # Override LDAP host (default: uses openldap service)
+    host: ""
+    port: 389
+    useTLS: false
+    # Bind DN for authentication (auto-configured from openldap if enabled)
+    bindDN: ""
+    # Bind password (auto-configured from openldap secret if enabled)
+    bindPassword: ""
+    # Base DN for user searches (auto-configured from openldap.config.domain)
+    baseDN: ""
+    # Base DN for group searches (defaults to baseDN)
+    groupBaseDN: ""
+    # LDAP filters
+    userFilter: "(objectClass=inetOrgPerson)"
+    groupFilter: "(objectClass=posixGroup)"
+    # Use existing secret for LDAP credentials (for external LDAP servers)
+    # Secret must contain keys defined in secretKeys
+    existingSecret: ""
+    secretKeys:
+      host: "host"           # optional
+      bindDN: "bind-dn"
+      bindPassword: "bind-password"
+      baseDN: "base-dn"      # optional
+
+  # LDAP attribute mappings
+  ldapAttributes:
+    uid: "uid"
+    email: "mail"
+    firstName: "givenName"
+    lastName: "sn"
+    phone: "telephoneNumber"
+    department: "departmentNumber"
+    title: "title"
+    orgUnit: "ou"
+    # Group attributes
+    groupName: "cn"
+    groupEmail: "mail"
+    groupDescription: "description"
+    groupMember: "memberUid"
+
+  # Sync options
+  sync:
+    # Dry run mode (simulate changes without applying)
+    dryRun: true
+    # User sync options
+    users:
+      enabled: true
+      create: true
+      update: true
+      suspendMissing: false
+      deleteInsteadOfSuspend: false
+      defaultOrgUnit: "/"
+    # Group sync options
+    groups:
+      enabled: false
+      create: true
+      update: true
+      deleteMissing: false
+      syncMembers: true
+      emailSuffix: ""  # Defaults to @GOOGLE_DOMAIN
+    # Organizational Unit sync options
+    orgUnits:
+      enabled: false
+      create: true
+
+  # Resources
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+  # Node selector, tolerations, affinity
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
