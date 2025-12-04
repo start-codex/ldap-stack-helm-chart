@@ -19,6 +19,10 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- with .Values.keycloak.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: keycloak
           image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
@@ -136,14 +140,20 @@ spec:
           resources:
             {{- toYaml .Values.keycloak.resources | nindent 12 }}
           {{- $realmImport := and .Values.keycloak.realm.import.enabled (or .Values.keycloak.realm.import.configMapName .Values.keycloak.realm.import.realmJson .Values.ldapFederation.enabled) }}
-          {{- if $realmImport }}
+          {{- if or $realmImport .Values.keycloak.extraVolumeMounts }}
           volumeMounts:
+            {{- if $realmImport }}
             - name: realm-config
               mountPath: /opt/keycloak/data/import
               readOnly: true
+            {{- end }}
+            {{- with .Values.keycloak.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
-      {{- if $realmImport }}
+      {{- if or $realmImport .Values.keycloak.extraVolumes }}
       volumes:
+        {{- if $realmImport }}
         - name: realm-config
           configMap:
             {{- if .Values.keycloak.realm.import.configMapName }}
@@ -151,6 +161,10 @@ spec:
             {{- else }}
             name: {{ include "ldap-stack.keycloak.fullname" . }}-realm
             {{- end }}
+        {{- end }}
+        {{- with .Values.keycloak.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       {{- end }}
       {{- with .Values.keycloak.nodeSelector }}
       nodeSelector:

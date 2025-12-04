@@ -269,6 +269,35 @@ keycloak:
   # Extra environment variables
   extraEnv: []
 
+  # Extra init containers (e.g., to download provider JARs)
+  # Example:
+  # extraInitContainers:
+  #   - name: download-providers
+  #     image: busybox
+  #     command:
+  #       - sh
+  #       - -c
+  #       - |
+  #         wget -O /providers/my-theme.jar https://example.com/my-theme.jar
+  #     volumeMounts:
+  #       - name: providers
+  #         mountPath: /providers
+  extraInitContainers: []
+
+  # Extra volumes (e.g., for provider JARs)
+  # Example:
+  # extraVolumes:
+  #   - name: providers
+  #     emptyDir: {}
+  extraVolumes: []
+
+  # Extra volume mounts for Keycloak container
+  # Example:
+  # extraVolumeMounts:
+  #   - name: providers
+  #     mountPath: /opt/keycloak/providers
+  extraVolumeMounts: []
+
   # Import realm on startup
   realm:
     import:

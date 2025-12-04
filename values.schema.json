@@ -623,6 +623,27 @@
                         "$ref": "#/definitions/envVar"
                     }
                 },
+                "extraInitContainers": {
+                    "type": "array",
+                    "description": "Extra init containers for Keycloak (e.g., to download provider JARs)",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraVolumes": {
+                    "type": "array",
+                    "description": "Extra volumes for Keycloak (e.g., for provider JARs)",
+                    "items": {
+                        "type": "object"
+                    }
+                },
+                "extraVolumeMounts": {
+                    "type": "array",
+                    "description": "Extra volume mounts for Keycloak container",
+                    "items": {
+                        "type": "object"
+                    }
+                },
                 "realm": {
                     "type": "object",
                     "properties": {
