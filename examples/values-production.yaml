@@ -1,0 +1,321 @@
+# =============================================================================
+# LDAP Stack - Production Values Example
+# =============================================================================
+# For private cluster with Caddy as external gateway (TLS termination at Caddy)
+#
+# Usage:
+#   cp examples/values-production.yaml my-values.yaml
+#   helm install ldap-stack . -f my-values.yaml -n ldap
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# OpenLDAP Configuration
+# -----------------------------------------------------------------------------
+openldap:
+  enabled: true
+
+  image:
+    repository: startcodex/openldap
+    tag: "2.0.0"
+    pullPolicy: IfNotPresent
+
+  # REQUIRED: Change these values (or use existingSecret)
+  config:
+    organisation: "My Company"
+    domain: "mycompany.com"
+    # Option 1: Direct credentials (not recommended for production)
+    # adminPassword: "CHANGE_ME_STRONG_PASSWORD"
+    # configPassword: "CHANGE_ME_STRONG_PASSWORD"
+
+  # Option 2: From existing Secret (recommended for production)
+  existingSecret: "openldap-credentials"
+  secretKeys:
+    adminPassword: "admin-password"
+    configPassword: "config-password"
+
+  # TLS disabled - Caddy handles TLS termination externally
+  tls:
+    enabled: false
+
+  # Service - LoadBalancer for Caddy reverse proxy
+  service:
+    type: LoadBalancer
+    ldapPort: 389
+    ldapsPort: 636
+
+  # Persistence (for <100 users)
+  persistence:
+    enabled: true
+    storageClass: "longhorn-simple"
+    data:
+      size: 1Gi
+      accessMode: ReadWriteOnce
+    config:
+      size: 100Mi
+      accessMode: ReadWriteOnce
+
+  # Resources (for <100 users)
+  resources:
+    requests:
+      memory: "128Mi"
+      cpu: "100m"
+    limits:
+      memory: "256Mi"
+      cpu: "200m"
+
+  # Bootstrap - Create default OUs
+  bootstrap:
+    enabled: true
+    createDefaultOUs: true
+
+  # Health checks
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# -----------------------------------------------------------------------------
+# phpLDAPadmin Configuration
+# -----------------------------------------------------------------------------
+phpldapadmin:
+  enabled: true
+
+  image:
+    repository: osixia/phpldapadmin
+    tag: "0.9.0"
+    pullPolicy: IfNotPresent
+
+  # LoadBalancer for Caddy reverse proxy
+  service:
+    type: LoadBalancer
+    port: 80
+
+  # Ingress disabled - using Caddy externally
+  ingress:
+    enabled: false
+
+  # Resources (for <100 users)
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"
+
+# -----------------------------------------------------------------------------
+# Keycloak Configuration
+# -----------------------------------------------------------------------------
+keycloak:
+  enabled: true
+
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "26.0"
+    pullPolicy: IfNotPresent
+
+  # REQUIRED: Change these values (or use existingSecret)
+  admin:
+    # Option 1: Direct credentials (not recommended for production)
+    # username: "admin"
+    # password: "CHANGE_ME_STRONG_PASSWORD"
+    username: ""
+    password: ""
+
+  # Option 2: From existing Secret (recommended for production)
+  existingSecret: "keycloak-admin-credentials"
+  secretKeys:
+    adminUsername: "username"
+    adminPassword: "password"
+
+  # Production mode
+  devMode: false
+
+  # Production settings - REQUIRED when devMode: false
+  production:
+    hostname: "keycloak.mycompany.com"
+    database:
+      vendor: postgres
+      host: "postgres-keycloak.database.svc.cluster.local"
+      port: 5432
+      database: keycloak
+      # Option 1: Direct credentials (not recommended)
+      # username: "keycloak"
+      # password: "CHANGE_ME_DB_PASSWORD"
+      #
+      # Option 2: From existing Secret (recommended)
+      existingSecret: "keycloak-db-credentials"
+      secretKeys:
+        username: "username"
+        password: "password"
+
+  # Extra environment variables for additional configuration
+  extraEnv: []
+
+  # LoadBalancer for Caddy reverse proxy
+  service:
+    type: LoadBalancer
+    port: 8080
+
+  # Ingress disabled - using Caddy externally
+  ingress:
+    enabled: false
+
+  # Resources (for <100 users)
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "250m"
+    limits:
+      memory: "768Mi"
+      cpu: "500m"
+
+# -----------------------------------------------------------------------------
+# LDAP Federation - Connect Keycloak to OpenLDAP
+# -----------------------------------------------------------------------------
+ldapFederation:
+  enabled: true
+  realmName: "master"
+  displayName: "corporate-ldap"
+  editMode: "WRITABLE"
+  syncPeriod: -1
+  changedSyncPeriod: -1
+
+# -----------------------------------------------------------------------------
+# Network Policies - Disabled for private cluster
+# -----------------------------------------------------------------------------
+networkPolicy:
+  enabled: false
+
+# -----------------------------------------------------------------------------
+# Pod Disruption Budget
+# -----------------------------------------------------------------------------
+podDisruptionBudget:
+  enabled: true
+  maxUnavailable: 1
+
+# -----------------------------------------------------------------------------
+# Metrics - Enable if using Prometheus
+# -----------------------------------------------------------------------------
+metrics:
+  serviceMonitor:
+    enabled: false
+  openldapExporter:
+    enabled: false
+
+# -----------------------------------------------------------------------------
+# LDAP to Google Workspace Sync
+# -----------------------------------------------------------------------------
+googleSync:
+  # Enable LDAP to Google Workspace synchronization
+  enabled: false  # Set to true when ready to sync
+
+  image:
+    repository: startcodex/ldap-sync-google
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  # CronJob mode (recommended for production)
+  cronJob:
+    enabled: true
+    schedule: "0 */6 * * *"  # Every 6 hours
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 3
+
+  # Google Workspace configuration (REQUIRED)
+  google:
+    # Your Google Workspace domain
+    domain: "mycompany.com"
+    # Admin email for impersonation (must have admin privileges)
+    adminEmail: "admin@mycompany.com"
+    # Secret containing Google service account credentials JSON
+    # Create with: kubectl create secret generic google-sync-credentials --from-file=credentials.json=./service-account.json
+    existingSecret: "google-sync-credentials"
+    secretKey: "credentials.json"
+
+  # LDAP connection configuration
+  ldap:
+    # Option 1: Use internal OpenLDAP (leave host empty)
+    # The chart will auto-configure connection to the OpenLDAP service
+    host: ""
+    port: 389
+    useTLS: false
+    # Override bind DN and base DN if needed
+    bindDN: ""      # Default: cn=admin,dc=mycompany,dc=com
+    baseDN: ""      # Default: dc=mycompany,dc=com
+    groupBaseDN: "" # Default: same as baseDN
+
+    # Option 2: Use external LDAP server with existing secret
+    # Uncomment and configure:
+    # existingSecret: "external-ldap-credentials"
+    # secretKeys:
+    #   host: "host"           # optional - can also set ldap.host directly
+    #   bindDN: "bind-dn"
+    #   bindPassword: "bind-password"
+    #   baseDN: "base-dn"      # optional - can also set ldap.baseDN directly
+
+    # LDAP filters
+    userFilter: "(objectClass=inetOrgPerson)"
+    groupFilter: "(objectClass=posixGroup)"
+
+  # LDAP attribute mappings
+  ldapAttributes:
+    uid: "uid"
+    email: "mail"
+    firstName: "givenName"
+    lastName: "sn"
+    phone: "telephoneNumber"
+    department: "departmentNumber"
+    title: "title"
+    orgUnit: "ou"
+    groupName: "cn"
+    groupEmail: "mail"
+    groupDescription: "description"
+    groupMember: "memberUid"
+
+  # Sync options
+  sync:
+    # IMPORTANT: Start with dryRun: true to verify changes
+    dryRun: true  # Set to false after verifying sync behavior
+
+    # User sync options
+    users:
+      enabled: true
+      create: true           # Create new users in Google
+      update: true           # Update existing users
+      suspendMissing: false  # Suspend users not in LDAP
+      deleteInsteadOfSuspend: false  # Delete instead of suspend (dangerous!)
+      defaultOrgUnit: "/"    # Default organizational unit for new users
+
+    # Group sync options
+    groups:
+      enabled: false         # Enable group synchronization
+      create: true           # Create new groups in Google
+      update: true           # Update existing groups
+      deleteMissing: false   # Delete groups not in LDAP (dangerous!)
+      syncMembers: true      # Sync group membership
+      emailSuffix: ""        # Email suffix for groups (default: @domain)
+
+    # Organizational Unit sync options
+    orgUnits:
+      enabled: false         # Enable OU synchronization
+      create: true           # Create new OUs in Google
+
+  # Resources
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "50m"
+    limits:
+      memory: "128Mi"
+      cpu: "100m"

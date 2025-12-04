@@ -2,7 +2,7 @@ apiVersion: v2
 name: ldap-stack
 description: OpenLDAP + phpLDAPadmin + Keycloak stack for centralized identity management with SSO support
 type: application
-version: 1.3.0
+version: 1.3.1
 appVersion: "2.6.0"
 annotations:
   artifacthub.io/signKey: |
@@ -30,11 +30,9 @@ annotations:
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
     - kind: added
-      description: Add LDAP to Google Workspace sync component (startcodex/ldap-sync-google)
+      description: Add support for extraInitContainers, extraVolumes, and extraVolumeMounts in Keycloak
     - kind: added
-      description: Support for Deployment or CronJob modes for Google sync
-    - kind: added
-      description: Support external LDAP secret for Google sync (existingSecret for LDAP credentials)
+      description: Enable custom provider JARs and themes in Keycloak via init containers
 keywords:
   - ldap
   - openldap
