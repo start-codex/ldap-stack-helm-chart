@@ -123,7 +123,7 @@ helm install ldap ldap-stack/ldap-stack \
 | `phpldapadmin.enabled` | Enable phpLDAPadmin | `true` |
 | `phpldapadmin.image.repository` | Image repository | `phpldapadmin/phpldapadmin` |
 | `phpldapadmin.image.tag` | Image tag | `latest` |
-| `phpldapadmin.ldap.loginAttr` | Login attribute (`DN` for full DN, `uid` for username) | `DN` |
+| `phpldapadmin.ldap.loginAttr` | Login attribute (`uid` for username, `DN` for full DN) | `uid` |
 | `phpldapadmin.ldap.alertRootDN` | Block rootdn login | `false` |
 | `phpldapadmin.extraEnv` | Extra environment variables | `[]` |
 | `phpldapadmin.service.type` | Service type | `ClusterIP` |
