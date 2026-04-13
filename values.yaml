@@ -151,8 +151,8 @@ phpldapadmin:
 
   # LDAP login configuration
   ldap:
-    # Login attribute: "DN" for full DN login, or "uid" for username login
-    loginAttr: "DN"
+    # Login attribute: "uid" for username login, or "DN" for full DN login
+    loginAttr: "uid"
     # Allow rootdn login (set to "false" to allow admin DN login)
     alertRootDN: "false"
 
