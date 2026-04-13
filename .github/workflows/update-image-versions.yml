@@ -1,0 +1,218 @@
+name: Update Image Versions
+
+on:
+  schedule:
+    # Runs every Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch: # Allows manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ================================================================
+      # Detect latest versions
+      # ================================================================
+
+      - name: Get latest startcodex/openldap version
+        id: openldap
+        run: |
+          CURRENT=$(grep -A2 'openldap:' values.yaml | grep 'tag:' | head -1 | awk '{print $2}' | tr -d '"')
+          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/startcodex/openldap/tags/?page_size=20&ordering=last_updated" \
+            | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(split(".") | map(tonumber)) | last')
+
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "needs_update=$( [ "$CURRENT" != "$LATEST" ] && [ -n "$LATEST" ] && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "openldap: $CURRENT -> $LATEST"
+
+      - name: Get latest startcodex/ldap-sync-google version
+        id: synctool
+        run: |
+          CURRENT=$(awk '/^googleSync:/,/pullPolicy:/ {if (/tag:/) {print $2; exit}}' values.yaml | tr -d '"')
+          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/startcodex/ldap-sync-google/tags/?page_size=20&ordering=last_updated" \
+            | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(split(".") | map(tonumber)) | last')
+
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "needs_update=$( [ "$CURRENT" != "$LATEST" ] && [ -n "$LATEST" ] && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "ldap-sync-google: $CURRENT -> $LATEST"
+
+      - name: Get latest phpldapadmin/phpldapadmin version
+        id: phpldapadmin
+        run: |
+          CURRENT=$(awk '/^phpldapadmin:/,/pullPolicy:/ {if (/tag:/) {print $2; exit}}' values.yaml | tr -d '"')
+          LATEST=$(curl -s "https://hub.docker.com/v2/repositories/phpldapadmin/phpldapadmin/tags/?page_size=20&ordering=last_updated" \
+            | jq -r '[.results[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(split(".") | map(tonumber)) | last')
+
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "needs_update=$( [ "$CURRENT" != "$LATEST" ] && [ -n "$LATEST" ] && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "phpldapadmin: $CURRENT -> $LATEST"
+
+      - name: Get latest keycloak version
+        id: keycloak
+        run: |
+          CURRENT=$(awk '/^keycloak:/,/pullPolicy:/ {if (/tag:/) {print $2; exit}}' values.yaml | tr -d '"')
+          LATEST=$(curl -s "https://quay.io/api/v1/repository/keycloak/keycloak/tag/?limit=50&onlyActiveTags=true" \
+            | jq -r '[.tags[].name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))] | sort_by(split(".") | map(tonumber)) | last')
+
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "needs_update=$( [ "$CURRENT" != "$LATEST" ] && [ -n "$LATEST" ] && echo true || echo false )" >> $GITHUB_OUTPUT
+          echo "keycloak: $CURRENT -> $LATEST"
+
+      # ================================================================
+      # Check if any update is needed
+      # ================================================================
+
+      - name: Check if any update is needed
+        id: compare
+        run: |
+          if [ "${{ steps.openldap.outputs.needs_update }}" == "true" ] || \
+             [ "${{ steps.synctool.outputs.needs_update }}" == "true" ] || \
+             [ "${{ steps.phpldapadmin.outputs.needs_update }}" == "true" ] || \
+             [ "${{ steps.keycloak.outputs.needs_update }}" == "true" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "All images are up to date"
+          fi
+
+      # ================================================================
+      # Apply updates
+      # ================================================================
+
+      - name: Update openldap version
+        if: steps.openldap.outputs.needs_update == 'true'
+        run: |
+          NEW="${{ steps.openldap.outputs.latest }}"
+          # Update values.yaml (first tag under openldap.image)
+          sed -i "0,/startcodex\/openldap/{/startcodex\/openldap/{n;s/tag: .*/tag: \"$NEW\"/}}" values.yaml
+          # Update Chart.yaml image annotation
+          sed -i "s|startcodex/openldap:[0-9]*\.[0-9]*\.[0-9]*|startcodex/openldap:$NEW|g" Chart.yaml
+          echo "Updated openldap to $NEW"
+
+      - name: Update ldap-sync-google version
+        if: steps.synctool.outputs.needs_update == 'true'
+        run: |
+          NEW="${{ steps.synctool.outputs.latest }}"
+          sed -i "0,/startcodex\/ldap-sync-google/{/startcodex\/ldap-sync-google/{n;s/tag: .*/tag: \"$NEW\"/}}" values.yaml
+          sed -i "s|startcodex/ldap-sync-google:[0-9]*\.[0-9]*\.[0-9]*|startcodex/ldap-sync-google:$NEW|g" Chart.yaml
+          echo "Updated ldap-sync-google to $NEW"
+
+      - name: Update phpldapadmin version
+        if: steps.phpldapadmin.outputs.needs_update == 'true'
+        run: |
+          NEW="${{ steps.phpldapadmin.outputs.latest }}"
+          sed -i "0,/phpldapadmin\/phpldapadmin/{/phpldapadmin\/phpldapadmin/{n;s/tag: .*/tag: \"$NEW\"/}}" values.yaml
+          sed -i "s|phpldapadmin/phpldapadmin:[0-9]*\.[0-9]*\.[0-9]*|phpldapadmin/phpldapadmin:$NEW|g" Chart.yaml
+          echo "Updated phpldapadmin to $NEW"
+
+      - name: Update keycloak version
+        if: steps.keycloak.outputs.needs_update == 'true'
+        run: |
+          NEW="${{ steps.keycloak.outputs.latest }}"
+          sed -i "0,/keycloak\/keycloak/{/keycloak\/keycloak/{n;s/tag: .*/tag: \"$NEW\"/}}" values.yaml
+          sed -i "s|keycloak/keycloak:[0-9]*\.[0-9]*\.[0-9]*|keycloak/keycloak:$NEW|g" Chart.yaml
+          echo "Updated keycloak to $NEW"
+
+      # ================================================================
+      # Bump chart version and create PR
+      # ================================================================
+
+      - name: Bump chart version
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          CHART_VERSION=$(grep '^version:' Chart.yaml | awk '{print $2}')
+          NEW_CHART_VERSION=$(echo $CHART_VERSION | awk -F. '{$NF = $NF + 1;} 1' | sed 's/ /./g')
+          sed -i "s/^version: .*/version: $NEW_CHART_VERSION/" Chart.yaml
+          echo "Bumped chart version to $NEW_CHART_VERSION"
+
+      - name: Generate PR content
+        if: steps.compare.outputs.needs_update == 'true'
+        id: pr-content
+        run: |
+          CHANGES=""
+          BRANCH_SUFFIX=""
+
+          if [ "${{ steps.openldap.outputs.needs_update }}" == "true" ]; then
+            CHANGES="${CHANGES}- **openldap**: \`${{ steps.openldap.outputs.current }}\` → \`${{ steps.openldap.outputs.latest }}\`\n"
+            BRANCH_SUFFIX="${BRANCH_SUFFIX}-openldap"
+          fi
+          if [ "${{ steps.synctool.outputs.needs_update }}" == "true" ]; then
+            CHANGES="${CHANGES}- **ldap-sync-google**: \`${{ steps.synctool.outputs.current }}\` → \`${{ steps.synctool.outputs.latest }}\`\n"
+            BRANCH_SUFFIX="${BRANCH_SUFFIX}-synctool"
+          fi
+          if [ "${{ steps.phpldapadmin.outputs.needs_update }}" == "true" ]; then
+            CHANGES="${CHANGES}- **phpldapadmin**: \`${{ steps.phpldapadmin.outputs.current }}\` → \`${{ steps.phpldapadmin.outputs.latest }}\`\n"
+            BRANCH_SUFFIX="${BRANCH_SUFFIX}-pla"
+          fi
+          if [ "${{ steps.keycloak.outputs.needs_update }}" == "true" ]; then
+            CHANGES="${CHANGES}- **keycloak**: \`${{ steps.keycloak.outputs.current }}\` → \`${{ steps.keycloak.outputs.latest }}\`\n"
+            BRANCH_SUFFIX="${BRANCH_SUFFIX}-kc"
+          fi
+
+          echo "changes<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$CHANGES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "branch=auto-update-images${BRANCH_SUFFIX}" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update container image versions"
+          branch: ${{ steps.pr-content.outputs.branch }}
+          delete-branch: true
+          title: "chore: update container image versions"
+          body: |
+            ## Automated Image Version Update
+
+            This PR was automatically created by the image version checker workflow.
+
+            ### Changes
+            ${{ steps.pr-content.outputs.changes }}
+            - **Chart version**: Bumped patch version
+
+            ### Sources
+            - openldap: Docker Hub (startcodex/openldap)
+            - ldap-sync-google: Docker Hub (startcodex/ldap-sync-google)
+            - phpldapadmin: Docker Hub (phpldapadmin/phpldapadmin)
+            - keycloak: Quay.io (keycloak/keycloak)
+
+            ### Next Steps
+            - Review the changes
+            - Merge to trigger a new chart release
+
+            ---
+            This check runs weekly on Mondays at 9:00 AM UTC
+          labels: |
+            automated
+            version-update
+            dependencies
+
+      # ================================================================
+      # Summary
+      # ================================================================
+
+      - name: Summary
+        run: |
+          echo "### Image Version Check" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Image | Current | Latest | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|---------|--------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| openldap | ${{ steps.openldap.outputs.current }} | ${{ steps.openldap.outputs.latest }} | ${{ steps.openldap.outputs.needs_update == 'true' && '🔄 Update' || '✅ Up to date' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ldap-sync-google | ${{ steps.synctool.outputs.current }} | ${{ steps.synctool.outputs.latest }} | ${{ steps.synctool.outputs.needs_update == 'true' && '🔄 Update' || '✅ Up to date' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| phpldapadmin | ${{ steps.phpldapadmin.outputs.current }} | ${{ steps.phpldapadmin.outputs.latest }} | ${{ steps.phpldapadmin.outputs.needs_update == 'true' && '🔄 Update' || '✅ Up to date' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| keycloak | ${{ steps.keycloak.outputs.current }} | ${{ steps.keycloak.outputs.latest }} | ${{ steps.keycloak.outputs.needs_update == 'true' && '🔄 Update' || '✅ Up to date' }} |" >> $GITHUB_STEP_SUMMARY
