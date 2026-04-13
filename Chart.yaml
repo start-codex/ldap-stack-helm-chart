@@ -2,8 +2,8 @@ apiVersion: v2
 name: ldap-stack
 description: OpenLDAP + phpLDAPadmin + Keycloak stack for centralized identity management with SSO support
 type: application
-version: 1.3.1
-appVersion: "2.6.0"
+version: 1.4.0
+appVersion: "2.6.1"
 annotations:
   artifacthub.io/signKey: |
     fingerprint: 35D9AD8B98D2FB5AF685CABA019335D0A0561140
@@ -19,20 +19,24 @@ annotations:
       url: https://github.com/start-codex/ldap-stack-helm-chart
   artifacthub.io/images: |
     - name: openldap
-      image: startcodex/openldap:2.0.0
+      image: startcodex/openldap:2.1.0
     - name: phpldapadmin
-      image: osixia/phpldapadmin:latest
+      image: phpldapadmin/phpldapadmin:latest
     - name: keycloak
       image: quay.io/keycloak/keycloak:latest
     - name: ldap-sync-google
       image: startcodex/ldap-sync-google:latest
-  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |
-    - kind: added
-      description: Add support for extraInitContainers, extraVolumes, and extraVolumeMounts in Keycloak
-    - kind: added
-      description: Enable custom provider JARs and themes in Keycloak via init containers
+    - kind: changed
+      description: "BREAKING: Replace osixia/phpldapadmin with phpldapadmin/phpldapadmin (port 80 -> 8080)"
+    - kind: changed
+      description: Upgrade openldap image to 2.1.0 with security patches (0 critical CVEs)
+    - kind: security
+      description: Eliminate 122 critical CVEs by replacing abandoned phpldapadmin image
+    - kind: security
+      description: Patch OpenSSL, MariaDB, glibc, BIND CVEs in openldap image
 keywords:
   - ldap
   - openldap

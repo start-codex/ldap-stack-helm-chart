@@ -25,13 +25,15 @@ spec:
           imagePullPolicy: {{ .Values.phpldapadmin.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
           env:
-            - name: PHPLDAPADMIN_LDAP_HOSTS
+            - name: LDAP_HOST
               value: {{ include "ldap-stack.openldap.fullname" . }}
-            - name: PHPLDAPADMIN_HTTPS
-              value: "false"
+            - name: LDAP_PORT
+              value: "389"
+            - name: APP_KEY
+              value: "base64:{{ randAlphaNum 32 | b64enc }}"
           livenessProbe:
             httpGet:
               path: /
