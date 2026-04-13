@@ -107,7 +107,7 @@ helm install ldap ldap-stack/ldap-stack \
 |-----------|-------------|---------|
 | `openldap.enabled` | Enable OpenLDAP | `true` |
 | `openldap.image.repository` | Image repository | `startcodex/openldap` |
-| `openldap.image.tag` | Image tag | `2.0.0` |
+| `openldap.image.tag` | Image tag | `2.1.0` |
 | `openldap.service.type` | Service type | `ClusterIP` |
 | `openldap.service.ldapPort` | LDAP port | `389` |
 | `openldap.service.ldapsPort` | LDAPS port | `636` |
@@ -122,7 +122,7 @@ helm install ldap ldap-stack/ldap-stack \
 |-----------|-------------|---------|
 | `phpldapadmin.enabled` | Enable phpLDAPadmin | `true` |
 | `phpldapadmin.service.type` | Service type | `ClusterIP` |
-| `phpldapadmin.service.port` | Service port | `80` |
+| `phpldapadmin.service.port` | Service port | `8080` |
 | `phpldapadmin.ingress.enabled` | Enable Ingress | `false` |
 
 ### Keycloak Parameters
@@ -160,7 +160,7 @@ helm install ldap ldap-stack/ldap-stack \
 
 ```bash
 # phpLDAPadmin
-kubectl port-forward svc/<release>-phpldapadmin 8080:80
+kubectl port-forward svc/<release>-phpldapadmin 8080:8080
 
 # Keycloak
 kubectl port-forward svc/<release>-keycloak 8081:8080
