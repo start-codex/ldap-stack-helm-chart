@@ -292,6 +292,56 @@ metrics:
     interval: "30s"
 ```
 
+## Upgrading from osixia/phpldapadmin
+
+Chart 1.4.x replaces `osixia/phpldapadmin` (abandoned, Debian 10 EOL, 122 critical CVEs) with `phpldapadmin/phpldapadmin` (leenooks, Alpine, PHP 8.4, actively maintained).
+
+### Login changes
+
+The new phpLDAPadmin uses `uid` attribute for login by default. This means:
+
+- **Regular users**: Login with their `uid` (e.g., `julio.caicedo`) and LDAP password. Works out of the box.
+- **Admin (rootdn)**: The default `cn=admin,dc=example,dc=com` is a virtual rootdn with **no real LDAP entry**. The new phpLDAPadmin requires the DN to exist as an entry to complete login. Login with DN will authenticate but then fail with "DN doesn't exist".
+
+### Solution for admin access
+
+Create a real admin user entry in LDAP:
+
+```bash
+kubectl exec -i <openldap-pod> -- ldapadd -x -H ldap://localhost:389 \
+  -D "cn=admin,dc=example,dc=com" -w <admin-password> <<EOF
+dn: cn=LDAP Admin,ou=users,dc=example,dc=com
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: top
+cn: LDAP Admin
+sn: Admin
+givenName: LDAP
+uid: admin
+uidNumber: 999
+gidNumber: 999
+homeDirectory: /nonexistent
+loginShell: /usr/sbin/nologin
+EOF
+
+# Set the password (same as rootdn or a dedicated one)
+kubectl exec <openldap-pod> -- ldappasswd -x -H ldap://localhost:389 \
+  -D "cn=admin,dc=example,dc=com" -w <admin-password> \
+  -s <new-password> "cn=LDAP Admin,ou=users,dc=example,dc=com"
+```
+
+Then login with `admin` as USER ID and the password you set.
+
+### Port change
+
+The service port changes from `80` to `8080` (container port). If you expose phpLDAPadmin via LoadBalancer or Ingress on port 80, set:
+
+```yaml
+phpldapadmin:
+  service:
+    port: 80  # external port, maps to container 8080
+```
+
 ## Troubleshooting
 
 ### Check pod status
