@@ -149,6 +149,16 @@ phpldapadmin:
     tag: "latest"
     pullPolicy: IfNotPresent
 
+  # LDAP login configuration
+  ldap:
+    # Login attribute: "DN" for full DN login, or "uid" for username login
+    loginAttr: "DN"
+    # Allow rootdn login (set to "false" to allow admin DN login)
+    alertRootDN: "false"
+
+  # Extra environment variables
+  extraEnv: []
+
   # Service configuration
   service:
     type: ClusterIP  # ClusterIP, NodePort, LoadBalancer

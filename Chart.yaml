@@ -2,7 +2,7 @@ apiVersion: v2
 name: ldap-stack
 description: OpenLDAP + phpLDAPadmin + Keycloak stack for centralized identity management with SSO support
 type: application
-version: 1.4.0
+version: 1.4.1
 appVersion: "2.6.1"
 annotations:
   artifacthub.io/signKey: |
@@ -37,6 +37,10 @@ annotations:
       description: Eliminate 122 critical CVEs by replacing abandoned phpldapadmin image
     - kind: security
       description: Patch OpenSSL, MariaDB, glibc, BIND CVEs in openldap image
+    - kind: fixed
+      description: "phpLDAPadmin now auto-configures LDAP connection, base DN, and admin login"
+    - kind: added
+      description: "phpLDAPadmin supports extraEnv, ldap.loginAttr, and ldap.alertRootDN configuration"
 keywords:
   - ldap
   - openldap

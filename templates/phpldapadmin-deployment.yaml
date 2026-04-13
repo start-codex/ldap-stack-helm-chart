@@ -28,12 +28,28 @@ spec:
               containerPort: 8080
               protocol: TCP
           env:
+            - name: APP_KEY
+              value: "base64:{{ randAlphaNum 32 | b64enc }}"
             - name: LDAP_HOST
               value: {{ include "ldap-stack.openldap.fullname" . }}
             - name: LDAP_PORT
               value: "389"
-            - name: APP_KEY
-              value: "base64:{{ randAlphaNum 32 | b64enc }}"
+            - name: LDAP_BASE_DN
+              value: {{ include "ldap-stack.openldap.baseDN" . | quote }}
+            - name: LDAP_USERNAME
+              value: {{ include "ldap-stack.openldap.adminDN" . | quote }}
+            - name: LDAP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ldap-stack.openldap.secretName" . }}
+                  key: {{ .Values.openldap.secretKeys.adminPassword | default "admin-password" }}
+            - name: LDAP_LOGIN_ATTR
+              value: {{ .Values.phpldapadmin.ldap.loginAttr | default "DN" | quote }}
+            - name: LDAP_ALERT_ROOTDN
+              value: {{ .Values.phpldapadmin.ldap.alertRootDN | default "false" | quote }}
+            {{- with .Values.phpldapadmin.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /
