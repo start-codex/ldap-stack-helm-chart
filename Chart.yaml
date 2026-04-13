@@ -21,11 +21,11 @@ annotations:
     - name: openldap
       image: startcodex/openldap:2.1.0
     - name: phpldapadmin
-      image: phpldapadmin/phpldapadmin:latest
+      image: phpldapadmin/phpldapadmin:2.3.9
     - name: keycloak
-      image: quay.io/keycloak/keycloak:latest
+      image: quay.io/keycloak/keycloak:26.6.0
     - name: ldap-sync-google
-      image: startcodex/ldap-sync-google:latest
+      image: startcodex/ldap-sync-google:0.3.0
   artifacthub.io/containsSecurityUpdates: "true"
   artifacthub.io/prerelease: "false"
   artifacthub.io/changes: |

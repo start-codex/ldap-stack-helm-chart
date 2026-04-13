@@ -146,8 +146,8 @@ phpldapadmin:
 
   image:
     repository: phpldapadmin/phpldapadmin
-    tag: "latest"
-    pullPolicy: Always
+    tag: "2.3.9"
+    pullPolicy: IfNotPresent
 
   # LDAP login configuration
   ldap:
@@ -204,8 +204,8 @@ keycloak:
 
   image:
     repository: quay.io/keycloak/keycloak
-    tag: "latest"
-    pullPolicy: Always
+    tag: "26.6.0"
+    pullPolicy: IfNotPresent
 
   # Keycloak admin credentials (REQUIRED)
   admin:
@@ -409,8 +409,8 @@ googleSync:
 
   image:
     repository: startcodex/ldap-sync-google
-    tag: "latest"
-    pullPolicy: Always
+    tag: "0.3.0"
+    pullPolicy: IfNotPresent
 
   # Sync interval (e.g., 1h, 30m, 2h30m). Set to "0" for single run (use with CronJob)
   syncInterval: "1h"
