@@ -146,8 +146,18 @@ phpldapadmin:
 
   image:
     repository: phpldapadmin/phpldapadmin
-    tag: "latest"
+    tag: "2.3.9"
     pullPolicy: IfNotPresent
+
+  # LDAP login configuration
+  ldap:
+    # Login attribute: "DN" for full DN login, or "uid" for username login
+    loginAttr: "DN"
+    # Allow rootdn login (set to "false" to allow admin DN login)
+    alertRootDN: "false"
+
+  # Extra environment variables
+  extraEnv: []
 
   # Service configuration
   service:
@@ -194,7 +204,7 @@ keycloak:
 
   image:
     repository: quay.io/keycloak/keycloak
-    tag: "latest"
+    tag: "26.6.0"
     pullPolicy: IfNotPresent
 
   # Keycloak admin credentials (REQUIRED)
@@ -399,7 +409,7 @@ googleSync:
 
   image:
     repository: startcodex/ldap-sync-google
-    tag: "latest"
+    tag: "0.3.0"
     pullPolicy: IfNotPresent
 
   # Sync interval (e.g., 1h, 30m, 2h30m). Set to "0" for single run (use with CronJob)
