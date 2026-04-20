@@ -2,7 +2,7 @@ apiVersion: v2
 name: ldap-stack
 description: OpenLDAP + phpLDAPadmin + Keycloak stack for centralized identity management with SSO support
 type: application
-version: 1.4.2
+version: 1.4.3
 appVersion: "2.6.1"
 annotations:
   artifacthub.io/signKey: |
@@ -23,7 +23,7 @@ annotations:
     - name: phpldapadmin
       image: phpldapadmin/phpldapadmin:2.3.9
     - name: keycloak
-      image: quay.io/keycloak/keycloak:26.6.0
+      image: quay.io/keycloak/keycloak:26.6.1
     - name: ldap-sync-google
       image: startcodex/ldap-sync-google:0.3.0
   artifacthub.io/containsSecurityUpdates: "true"
