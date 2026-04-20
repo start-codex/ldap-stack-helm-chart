@@ -204,7 +204,7 @@ keycloak:
 
   image:
     repository: quay.io/keycloak/keycloak
-    tag: "26.6.0"
+    tag: "26.6.1"
     pullPolicy: IfNotPresent
 
   # Keycloak admin credentials (REQUIRED)
